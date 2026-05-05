@@ -559,15 +559,16 @@
 
         .tabs {
             display: flex;
-            margin-bottom: 20px;
+            justify-content: center;  /* KOD BARU: Letakkan butang di tengah */
+            width: fit-content;       /* KOD BARU: Saiz kotak ikut saiz butang sahaja */
+            margin: 0 auto 20px auto; /* KOD BARU: Tolak keseluruhan kotak ke tengah skrin */
             background: rgba(255, 255, 255, 0.5);
             border-radius: 12px;
             padding: 5px;
             border: var(--glass-border);
             flex-wrap: wrap;
-            transition: left 0.3s ease;
-            position: relative; /* KOD BARU */
-            z-index: 1; /* KOD BARU */
+            position: relative; 
+            z-index: 1; 
         }
 
         /* KOD BARU: Latar Belakang (Slider) */
@@ -598,7 +599,8 @@
             white-space: nowrap;
             position: relative; 
             z-index: 2; 
-            gap: 0; /* Tiada jarak bila inactive */
+            gap: 0; 
+            /* Pastikan kod 'flex: 1;' dibuang dari sini supaya butang tidak memanjang */
         }
 
         /* KOD BARU: Asingkan saiz ikon dan sembunyikan teks */
