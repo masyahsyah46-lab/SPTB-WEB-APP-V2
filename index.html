@@ -559,16 +559,22 @@
 
         .tabs {
             display: flex;
-            justify-content: center;  /* KOD BARU: Letakkan butang di tengah */
-            width: fit-content;       /* KOD BARU: Saiz kotak ikut saiz butang sahaja */
-            margin: 0 auto 20px auto; /* KOD BARU: Tolak keseluruhan kotak ke tengah skrin */
-            background: rgba(255, 255, 255, 0.5);
+            justify-content: center;
+            width: fit-content;
+            margin: 0 auto 20px auto;
+            background: rgba(255, 255, 255, 0.7); /* Diterangkan sedikit supaya jelas bila scroll */
+            backdrop-filter: blur(12px);          /* KOD BARU: Efek kaca kabur bila scroll */
+            -webkit-backdrop-filter: blur(12px);  /* KOD BARU: Sokongan untuk browser Safari/Apple */
             border-radius: 12px;
             padding: 5px;
             border: var(--glass-border);
             flex-wrap: wrap;
-            position: relative; 
-            z-index: 1; 
+            
+            /* --- KOD BARU UNTUK JADIKAN IA MELEKAT (STICKY) --- */
+            position: sticky; 
+            top: 15px;      /* Jarak dari atas skrin bila ia mula melekat */
+            z-index: 1000;  /* Pastikan menu sentiasa berada di atas elemen (card) lain */
+            /* -------------------------------------------------- */
         }
 
         /* KOD BARU: Latar Belakang (Slider) */
