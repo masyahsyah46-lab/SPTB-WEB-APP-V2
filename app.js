@@ -6325,8 +6325,13 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     // --- KOD BARU (c): Panggil fungsi animasi selepas tab ditukar ---
     // Mula bergerak serta merta
     setTimeout(updateTabSlider, 10);
-    // Bergerak sekali lagi untuk ikut saiz akhir selepas butang siap mengembang
-    setTimeout(updateTabSlider, 310);
+    // Bergerak sekali lagi di pertengahan animasi supaya nampak lebih lancar
+    setTimeout(updateTabSlider, 150); 
+    // Bergerak apabila butang sudah siap mengembang sepenuhnya (tambah sedikit masa)
+    setTimeout(updateTabSlider, 350);
+    // Langkah berjaga-jaga terakhir jika browser lambat memproses data (lag)
+    setTimeout(updateTabSlider, 600);
+    // ---------------------------------------------------------------
     lastActiveTab = tabName;
     storageWrapper.set({ 'stb_last_active_tab': tabName });
     
