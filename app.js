@@ -3320,16 +3320,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateProgress = (percent, message) => {
       if (pdfProcessing) {
         pdfProcessing.style.display = 'block';
+        // Menggunakan rekaan Uiverse dengan peratusan dinamik (0-100%)
         pdfProcessing.innerHTML = `
-          <div style="margin:10px 0;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:bold; color:#1e40af;">
-              <span>${message}</span>
-              <span>${percent}%</span>
-            </div>
-            <div style="width:100%; background:#e2e8f0; height:10px; border-radius:5px; overflow:hidden;">
-              <div style="width:${percent}%; background:linear-gradient(90deg, #3b82f6, #60a5fa); height:100%; transition:width 0.3s ease-out;"></div>
-            </div>
-            <div style="font-size:0.8rem; color:#64748b; margin-top:5px; text-align:center;">Sedang memproses data...</div>
+          <div class="uiverse-loader">
+            <span class="uiverse-loader-text">${message}</span>
+            <span class="uiverse-loader-percent">${percent}%</span>
           </div>`;
       }
       if (pdfResult) pdfResult.style.display = 'none';
