@@ -585,33 +585,47 @@
         }
 
         .tab-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 10px 15px;
             cursor: pointer;
-            font-weight: bold;
             border: none;
-            background: transparent !important; /* KOD BARU: Mesti transparent */
+            background: transparent !important; 
             color: #444;
-            font-size: 0.9rem;
             border-radius: 8px;
-            transition: color 0.3s;
-            flex: 1;
+            transition: color 0.3s, gap 0.3s ease;
             white-space: nowrap;
-            position: relative; /* KOD BARU */
-            z-index: 2; /* KOD BARU */
+            position: relative; 
+            z-index: 2; 
+            gap: 0; /* Tiada jarak bila inactive */
         }
 
+        /* KOD BARU: Asingkan saiz ikon dan sembunyikan teks */
+        .tab-icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .tab-text {
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        /* KOD BARU: Tunjuk teks dan wujudkan jarak bila aktif */
         .tab-btn.active {
-            color: white !important; /* KOD BARU: Buang background color */
+            color: white !important; 
             box-shadow: none !important;
+            gap: 8px; 
         }
 
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease-out;
+        .tab-btn.active .tab-text {
+            max-width: 200px;
+            opacity: 1;
         }
 
         @keyframes fadeIn {

@@ -6051,37 +6051,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
   document.addEventListener('focusin', saveActiveElement);
 
+  // Lencana nama pengguna (Telah dibuang fungsi log keluar dari sini)
   if (userBadge) {
-    userBadge.addEventListener('click', async () => {
-      if(confirm("Log keluar dari sistem?")) {
-        await storageWrapper.remove([
-          'stb_session', 
-          'stb_form_data', 
-          'stb_pelulus_state', 
-          'stb_last_active_tab',
-          'stb_last_active_element',
-          'stb_form_states',
-          'stb_search_state',
-          'stb_search_history_state',
-          'stb_has_printed',
-          'stb_drive_folder_url',
-          'stb_user_folder_url',
-          'stb_filter_pengesyor',
-          'stb_dashboard_data',
-          'stb_form_persistence',
-          'stb_database_persistence',
-          'stb_current_submitted_status_filter',
-          'stb_current_submitted_jenis_filter',
-          'stb_current_history_status_filter',
-          'stb_current_history_jenis_filter',
-          'stb_current_draft_filter',
-          'stb_music_playing',
-          'stb_bgm_volume',
-          'stb_sfx_volume'
-        ]);
-        location.reload();
-      }
-    });
+    userBadge.title = "Profil Pengguna"; // Tukar tajuk bila hover
+    userBadge.style.cursor = "default";  // Tukar kursor tetikus
   }
 
   async function logoutUserOnTimeout() {
@@ -6099,7 +6072,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       'stb_current_draft_filter', 'stb_music_playing', 'stb_bgm_volume', 'stb_sfx_volume'
     ]);
     location.reload();
-  }
+  }    
 
   function resetInactivityTimer() {
     if (inactivityTimer) clearTimeout(inactivityTimer);
@@ -6190,12 +6163,12 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     
     if (currentUser.role === 'PENGESYOR') {
       tabsContainer.innerHTML = `
-        <button class="tab-btn" data-target="dashboard">📊 Dashboard</button>
-        <button class="tab-btn" data-target="stb">✓ Borang Semakan</button>
-        <button class="tab-btn" data-target="db">📂 Input Database</button>
-        <button class="tab-btn" data-target="drafts">📋 Rekod Belum Hantar</button>
-        <button class="tab-btn" data-target="submitted">📋 Telah Disyor</button>
-        ${showProfileTab ? '<button class="tab-btn" data-target="profile">🏢 Cipta Profile Syarikat</button>' : ''}
+        <button class="tab-btn" data-target="dashboard"><span class="tab-icon">📊</span><span class="tab-text">Dashboard</span></button>
+        <button class="tab-btn" data-target="stb"><span class="tab-icon">✓</span><span class="tab-text">Borang Semakan</span></button>
+        <button class="tab-btn" data-target="db"><span class="tab-icon">📂</span><span class="tab-text">Input Database</span></button>
+        <button class="tab-btn" data-target="drafts"><span class="tab-icon">📋</span><span class="tab-text">Belum Hantar</span></button>
+        <button class="tab-btn" data-target="submitted"><span class="tab-icon">✅</span><span class="tab-text">Telah Disyor</span></button>
+        ${showProfileTab ? '<button class="tab-btn" data-target="profile"><span class="tab-icon">🏢</span><span class="tab-text">Cipta Profile Syarikat</span></button>' : ''}
       `;
       
       const nameField = document.getElementById('db_pengesyor');
@@ -6215,11 +6188,11 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
     } else if (currentUser.role === 'PELULUS') {
       tabsContainer.innerHTML = `
-        <button class="tab-btn" data-target="dashboard">📊 Dashboard</button>
-        <button class="tab-btn" data-target="inbox">1. Inbox</button>
-        <button class="tab-btn" data-target="pelulus-view">2. Semakan</button>
-        <button class="tab-btn" data-target="pelulus-action">3. Keputusan</button>
-        <button class="tab-btn" data-target="history">4. Sejarah</button>
+        <button class="tab-btn" data-target="dashboard"><span class="tab-icon">📊</span><span class="tab-text">Dashboard</span></button>
+        <button class="tab-btn" data-target="inbox"><span class="tab-icon">📥</span><span class="tab-text">1. Inbox</span></button>
+        <button class="tab-btn" data-target="pelulus-view"><span class="tab-icon">🔍</span><span class="tab-text">2. Semakan</span></button>
+        <button class="tab-btn" data-target="pelulus-action"><span class="tab-icon">⚖️</span><span class="tab-text">3. Keputusan</span></button>
+        <button class="tab-btn" data-target="history"><span class="tab-icon">📜</span><span class="tab-text">4. Sejarah</span></button>
       `;
       
       const pelulusNamaField = document.getElementById('pelulus_nama');
@@ -6243,8 +6216,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       
     } else if (currentUser.role === 'ADMIN') {
       tabsContainer.innerHTML = `
-        <button class="tab-btn" data-target="admin-dashboard">👑 Admin Dashboard</button>
-        ${showProfileTab ? '<button class="tab-btn" data-target="profile">🏢 Cipta Profile Syarikat</button>' : ''}
+        <button class="tab-btn" data-target="admin-dashboard"><span class="tab-icon">👑</span><span class="tab-text">Admin Dashboard</span></button>
+        ${showProfileTab ? '<button class="tab-btn" data-target="profile"><span class="tab-icon">🏢</span><span class="tab-text">Cipta Profile Syarikat</span></button>' : ''}
       `;
       
       const nameField = document.getElementById('db_pengesyor');
@@ -6262,35 +6235,12 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       
       switchTab(activeTab);
       
-    } else if (currentUser.role === 'PENGARAH') {
+    } else if (currentUser.role === 'PENGARAH' || currentUser.role === 'KETUA SEKSYEN') {
       tabsContainer.innerHTML = `
-        <button class="tab-btn" data-target="admin-dashboard">👑 Admin Dashboard</button>
-        <button class="tab-btn" data-target="inbox">📋 Belum Syor</button>
-        <button class="tab-btn" data-target="submitted">📋 Telah Syor</button>
-        <button class="tab-btn" data-target="history">📜 Sejarah</button>
-      `;
-      
-      const nameField = document.getElementById('db_pengesyor');
-      if(nameField) {
-        nameField.value = currentUser.name;
-        nameField.readOnly = true;
-      }
-      
-      const pelulusNamaField = document.getElementById('pelulus_nama');
-      if (pelulusNamaField) pelulusNamaField.value = currentUser.name;
-      
-      if(!activeTab || !['admin-dashboard','inbox','submitted','history'].includes(activeTab)) {
-        activeTab = 'admin-dashboard';
-      }
-      
-      switchTab(activeTab);
-      
-    } else if (currentUser.role === 'KETUA SEKSYEN') {
-      tabsContainer.innerHTML = `
-        <button class="tab-btn" data-target="admin-dashboard">👑 Admin Dashboard</button>
-        <button class="tab-btn" data-target="inbox">📋 Belum Syor</button>
-        <button class="tab-btn" data-target="submitted">📋 Telah Syor</button>
-        <button class="tab-btn" data-target="history">📜 Sejarah</button>
+        <button class="tab-btn" data-target="admin-dashboard"><span class="tab-icon">👑</span><span class="tab-text">Admin Dashboard</span></button>
+        <button class="tab-btn" data-target="inbox"><span class="tab-icon">📥</span><span class="tab-text">Belum Syor</span></button>
+        <button class="tab-btn" data-target="submitted"><span class="tab-icon">✅</span><span class="tab-text">Telah Syor</span></button>
+        <button class="tab-btn" data-target="history"><span class="tab-icon">📜</span><span class="tab-text">Sejarah</span></button>
       `;
       
       const nameField = document.getElementById('db_pengesyor');
@@ -6373,7 +6323,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     });
 
     // --- KOD BARU (c): Panggil fungsi animasi selepas tab ditukar ---
-    setTimeout(updateTabSlider, 50);
+    // Mula bergerak serta merta
+    setTimeout(updateTabSlider, 10);
+    // Bergerak sekali lagi untuk ikut saiz akhir selepas butang siap mengembang
+    setTimeout(updateTabSlider, 310);
     lastActiveTab = tabName;
     storageWrapper.set({ 'stb_last_active_tab': tabName });
     
