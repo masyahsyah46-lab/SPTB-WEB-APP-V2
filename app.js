@@ -370,23 +370,29 @@ document.addEventListener('DOMContentLoaded', () => {
   async function handleCredentialResponse(response) {
     console.log("V6.5.2 Google credential response received");
     
-    // Sembunyi butang Google dan papar loading
+    // 1. Sembunyi butang Google & ralat (jika ada)
     const googleButton = document.getElementById('googleButton');
     if (googleButton) {
       googleButton.style.display = 'none';
     }
     
-    if (loginPin) loginPin.style.display = 'none';
-    if (btnLogin) btnLogin.style.display = 'none';
-    
-    if (loginLoadingText) {
-      loginLoadingText.style.display = 'block';
-      loginLoadingText.textContent = 'Mengesahkan e-mel rasmi anda...';
-    }
     if (loginError) {
       loginError.style.display = 'none';
       loginError.textContent = '';
     }
+    
+    // 2. MULA PAPARKAN LOADING PROGRESS BAR (0-100%)
+    simulateLoadingWithSteps(
+      [
+        'Mengesahkan token Google...',
+        'Mengekstrak maklumat e-mel...',
+        'Menyemak pangkalan data...',
+        'Mengesahkan peranan pengguna...',
+        'Menyediakan sistem...',
+        'Log masuk berjaya!'
+      ],
+      'Proses Log Masuk'
+    );
     
     try {
       // Decode JWT token untuk dapatkan email
@@ -400,10 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log("V6.5.2 Email extracted from Google token:", userEmail);
       
       // Hantar email ke backend GAS untuk pengesahan
-      if (loginLoadingText) {
-        loginLoadingText.textContent = 'Menyemak e-mel dengan pangkalan data...';
-      }
-      
       const result = await verifyEmailWithBackend(userEmail);
       
       if (result.authenticated && result.user) {
@@ -416,18 +418,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Simpan sesi
         await storageWrapper.set({ 'stb_session': currentUser });
         
-        // Sembunyi loading
-        if (loginLoadingText) {
-          loginLoadingText.style.display = 'none';
-        }
-        
-        // Setup UI pengguna
+        // Setup UI pengguna selepas loading progress hampir selesai
+        // Guna setTimeout supaya pengguna sempat melihat progress bar mencapai 100%
         setTimeout(() => {
+          hideLoading(); // Pastikan loading ditutup
           setupUserUI();
-        }, 500);
+        }, 1200);
         
       } else {
         // Autentikasi gagal
+        hideLoading(); // Tutup progress bar
         const errorMsg = result.message || 'Akses Ditolak: E-mel tidak didaftarkan dalam sistem.';
         console.warn("V6.5.2 GIS Authentication failed:", errorMsg);
         
@@ -437,9 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error("V6.5.2 GIS Authentication error:", error);
       
-      if (loginLoadingText) {
-        loginLoadingText.style.display = 'none';
-      }
+      hideLoading(); // Tutup progress bar
       
       const errorMsg = `Ralat Pengesahan: ${error.message}. Sila cuba lagi.`;
       handleAuthError(errorMsg);
