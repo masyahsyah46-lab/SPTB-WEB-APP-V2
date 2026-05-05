@@ -566,6 +566,22 @@
             border: var(--glass-border);
             flex-wrap: wrap;
             transition: left 0.3s ease;
+            position: relative; /* KOD BARU */
+            z-index: 1; /* KOD BARU */
+        }
+
+        /* KOD BARU: Latar Belakang (Slider) */
+        .tab-slider {
+            position: absolute;
+            background-color: var(--theme-color);
+            border-radius: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 0;
         }
 
         .tab-btn {
@@ -573,20 +589,20 @@
             cursor: pointer;
             font-weight: bold;
             border: none;
-            background: none;
+            background: transparent !important; /* KOD BARU: Mesti transparent */
             color: #444;
             font-size: 0.9rem;
             border-radius: 8px;
-            transition: all 0.3s;
+            transition: color 0.3s;
             flex: 1;
             white-space: nowrap;
+            position: relative; /* KOD BARU */
+            z-index: 2; /* KOD BARU */
         }
 
         .tab-btn.active {
-            background-color: var(--theme-color);
-            color: white;
-            opacity: 1;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            color: white !important; /* KOD BARU: Buang background color */
+            box-shadow: none !important;
         }
 
         .tab-content {
@@ -1162,7 +1178,7 @@
         <div class="top-controls">
             <div class="user-badge" id="userBadge" title="Log Keluar">👤 User</div>
         </div>
-        <button id="btnTopFullView" class="btn-top-fullview" title="Paparan Penuh">🖥️ ⛶</button>
+        <button id="btnLogoutTop" class="btn-top-fullview" style="color: #ef4444; border-color: #ef4444;" title="Log Keluar">🚪 Log Keluar</button>
 
         <!-- NAVIGATION TABS -->
         <div class="tabs no-print" id="tabs-container">

@@ -6312,6 +6312,18 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       alert("Role pengguna tidak dikenali.");
     }
 
+    // --- KOD BARU (a): Masukkan elemen slider ke dalam container ---
+    if (tabsContainer) {
+        let existingSlider = document.getElementById('tabSlider');
+        if (!existingSlider) {
+            const slider = document.createElement('div');
+            slider.className = 'tab-slider';
+            slider.id = 'tabSlider';
+            tabsContainer.appendChild(slider);
+        }
+    }
+    // -------------------------------------------------------------
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         closeMobileMenu();
@@ -6321,6 +6333,26 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
     isAppReady = true; 
   }
+
+
+  // --- KOD BARU (b): Fungsi menggerakkan slider ---
+  function updateTabSlider() {
+      const tabsContainer = document.getElementById('tabs-container');
+      const slider = document.getElementById('tabSlider');
+      const activeBtn = tabsContainer ? tabsContainer.querySelector('.tab-btn.active') : null;
+
+      if (slider && activeBtn) {
+          // Ambil saiz dan kedudukan butang yang aktif
+          slider.style.width = activeBtn.offsetWidth + 'px';
+          slider.style.height = activeBtn.offsetHeight + 'px';
+          slider.style.left = activeBtn.offsetLeft + 'px';
+          slider.style.top = activeBtn.offsetTop + 'px';
+      }
+  }
+  // Kemaskini apabila skrin berubah saiz
+  window.addEventListener('resize', updateTabSlider);
+  // ------------------------------------------------
+
 
   function switchTab(tabName) {
     closeMobileMenu();
@@ -6340,6 +6372,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       }
     });
 
+    // --- KOD BARU (c): Panggil fungsi animasi selepas tab ditukar ---
+    setTimeout(updateTabSlider, 50);
     lastActiveTab = tabName;
     storageWrapper.set({ 'stb_last_active_tab': tabName });
     
@@ -7086,21 +7120,22 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     });
   }
   
-  if(btnTopFullView) {
-    btnTopFullView.addEventListener('click', () => {
-      if (currentUser) {
-        saveFormData();
-        saveDatabaseFormData();
-        if (lastActiveTab) {
-          saveFormState(lastActiveTab);
-        }
-        if (currentUser.role === 'PELULUS' && pelulusActiveItem) {
-          savePelulusState();
-        }
+  const btnLogoutTop = document.getElementById('btnLogoutTop');
+  if (btnLogoutTop) {
+    btnLogoutTop.addEventListener('click', async () => {
+      if(confirm("Adakah anda pasti mahu log keluar dari sistem?")) {
+        await storageWrapper.remove([
+          'stb_session', 'stb_form_data', 'stb_pelulus_state', 'stb_last_active_tab',
+          'stb_last_active_element', 'stb_form_states', 'stb_search_state',
+          'stb_search_history_state', 'stb_has_printed', 'stb_drive_folder_url',
+          'stb_user_folder_url', 'stb_filter_pengesyor', 'stb_dashboard_data',
+          'stb_form_persistence', 'stb_database_persistence',
+          'stb_current_submitted_status_filter', 'stb_current_submitted_jenis_filter',
+          'stb_current_history_status_filter', 'stb_current_history_jenis_filter',
+          'stb_current_draft_filter', 'stb_music_playing', 'stb_bgm_volume', 'stb_sfx_volume'
+        ]);
+        location.reload();
       }
-      
-      const fullViewUrl = 'index.html?view=full';
-      window.open(fullViewUrl, '_blank');
     });
   }
 
