@@ -94,6 +94,52 @@
         .menu-overlay.show {
             display: block;
         }
+        /* --- KOD BARU: Uiverse Loading Bar untuk PDF AI --- */
+        .uiverse-loader {
+            position: relative;
+            width: 100%;
+            height: 35px;
+            background: linear-gradient(to right, white, black);
+            background-size: 200% 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+            -webkit-box-reflect: below 1px linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.4));
+            animation: gradientAnimation 2s linear infinite reverse;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-sizing: border-box;
+            margin-top: 15px;
+            margin-bottom: 25px; /* Jarak bawah penting supaya pantulan tidak terpotong */
+        }
+
+        .uiverse-loader-text {
+            color: white;
+            mix-blend-mode: difference; /* Ini yang menukar warna teks jadi magik */
+            margin: 0;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: Arial, Helvetica, sans-serif;
+            letter-spacing: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .uiverse-loader-percent {
+            color: white;
+            mix-blend-mode: difference;
+            font-size: 14px;
+            font-weight: 900;
+            font-family: Arial, Helvetica, sans-serif;
+            letter-spacing: 1px;
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0; }
+            100% { background-position: 200% 0; }
+        }
 
         /* LOADING OVERLAY */
         #loading-overlay {
