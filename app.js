@@ -3197,6 +3197,11 @@ document.addEventListener('DOMContentLoaded', () => {
     pdfFileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         updateFileName(e.target.files[0].name);
+        
+        // --- KOD BARU: Arahkan sistem terus proses AI ---
+        processPdfWithAI();
+        // ----------------------------------------------
+        
       } else {
         updateFileName('Tiada fail dipilih');
       }
@@ -3927,6 +3932,11 @@ document.addEventListener('DOMContentLoaded', () => {
     profilePdfInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         updateProfileFileName(e.target.files[0].name);
+        
+        // --- KOD BARU: Arahkan sistem terus proses AI Profile ---
+        processProfileWithAI();
+        // ------------------------------------------------------
+        
       } else {
         updateProfileFileName('Tiada fail dipilih');
       }
