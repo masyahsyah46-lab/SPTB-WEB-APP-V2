@@ -3317,16 +3317,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let aiInterval = null;
 
+    // --- KOD ANIMASI BARU (Morphing & Outliner) ---
     const updateProgress = (percent, message) => {
-      if (pdfProcessing) {
-        pdfProcessing.style.display = 'block';
-        // Menggunakan rekaan Uiverse dengan peratusan dinamik (0-100%)
-        pdfProcessing.innerHTML = `
-          <div class="uiverse-loader">
-            <span class="uiverse-loader-text">${message}</span>
-            <span class="uiverse-loader-percent">${percent}%</span>
-          </div>`;
+      const statusBox = document.getElementById('status-box-main');
+      const progressRing = document.getElementById('progress-ring-main');
+      const percentageText = document.getElementById('percentage-main');
+      const progressMsg = document.getElementById('pdfProgressMsg');
+
+      // 1. Morph bentuk: Bulat -> Petak bila proses mula
+      if (statusBox.classList.contains('morph-circle')) {
+        statusBox.classList.replace('morph-circle', 'morph-square');
       }
+
+      // 2. Kemaskini teks peratusan & mesej
+      percentageText.innerHTML = `${percent}%`;
+      progressMsg.style.display = 'block';
+      progressMsg.innerText = message;
+
+      // 3. Gerakkan outliner SVG (Panjang garisan ialah 440)
+      const circumference = 440;
+      const offset = circumference - (percent / 100) * circumference;
+      progressRing.style.strokeDashoffset = offset;
+
       if (pdfResult) pdfResult.style.display = 'none';
     };
 
@@ -3352,21 +3364,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const pageText = textContent.items.map(item => item.str).join(' ');
         fullText += pageText + '\n';
         
-        const progress = 10 + Math.round((pageNum / totalPages) * 50);
+        const progress = 10 + Math.round((pageNum / totalPages) * 30); // 10% ke 40%
         updateProgress(progress, `Mengekstrak halaman ${pageNum}/${totalPages}`);
       }
 
       console.log("V6.5.2 PDF Extracted. Length:", fullText.length);
       
-      updateProgress(65, "Sedang Menghantar Untuk Keajaiban Backend AI...");
+      updateProgress(45, "Menganalisis dengan AI...");
       
-      let aiProgress = 65;
+      let aiProgress = 45;
       aiInterval = setInterval(() => {
         if (aiProgress < 95) {
           aiProgress += 1;
-          updateProgress(aiProgress, "Sedang menganalisis di pelayan...");
+          updateProgress(aiProgress, "Menganalisis dengan AI...");
         }
-      }, 500);
+      }, 300); // Bergerak lebih pantas
 
       extractedPdfData = await processPdfTextWithAI(fullText);
       
@@ -3374,31 +3386,31 @@ document.addEventListener('DOMContentLoaded', () => {
       
       updateProgress(100, "Selesai!");
       
-      await playSuccessSound();
+      // MEMAINKAN BUNYI SUCCESS KETIKA MENCAPAI 100%
+      await playSuccessSound(); 
       
+      // Tunggu 1 saat untuk bagi pengguna lihat "100% Selesai" sebelum memaparkan kotak hijau
       setTimeout(() => {
+        // Kembalikan kotak ke keadaan asal
+        document.getElementById('status-box-main').classList.replace('morph-square', 'morph-circle');
+        document.getElementById('progress-ring-main').style.strokeDashoffset = 440;
+        document.getElementById('percentage-main').innerHTML = `📄<br><span>Pilih PDF</span>`;
+        document.getElementById('pdfProgressMsg').style.display = 'none';
+
         displayExtractedData(extractedPdfData);
         if (pdfResult) {
           pdfResult.style.display = 'block';
-          pdfProcessing.style.display = 'none'; 
         }
-      }, 500);
+      }, 1000);
       
       storageWrapper.set({ 'stb_extracted_pdf_data': extractedPdfData });
       
     } catch (error) {
       console.error("V6.5.2 AI Error:", error);
-      
       if (aiInterval) clearInterval(aiInterval);
-
       await playErrorSound();
 
-      if (pdfProcessing) {
-        pdfProcessing.innerHTML = `
-          <div style="background:#fee2e2; padding:10px; border-radius:6px; border:1px solid #ef4444; color:#991b1b;">
-            <strong>Ralat:</strong> ${error.message}
-          </div>`;
-      }
+      document.getElementById('pdfProgressMsg').innerHTML = `<span style="color:#ef4444; font-weight:bold;">Ralat: ${error.message}</span>`;
       alert("Gagal memproses: " + error.message);
     }
   }
@@ -4058,14 +4070,36 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (profilePdfProcessing) {
-      profilePdfProcessing.style.display = 'block';
-    }
-    if (profilePdfResult) {
-      profilePdfResult.style.display = 'none';
-    }
+    let aiInterval = null;
+
+    // --- KOD ANIMASI BARU (Morphing & Outliner) UNTUK PROFILE ---
+    const updateProgress = (percent, message) => {
+      const statusBox = document.getElementById('status-box-profile');
+      const progressRing = document.getElementById('progress-ring-profile');
+      const percentageText = document.getElementById('percentage-profile');
+      const progressMsg = document.getElementById('profilePdfProgressMsg');
+
+      // 1. Morph bentuk: Bulat -> Petak bila proses mula
+      if (statusBox.classList.contains('morph-circle')) {
+        statusBox.classList.replace('morph-circle', 'morph-square');
+      }
+
+      // 2. Kemaskini teks peratusan & mesej
+      percentageText.innerHTML = `${percent}%`;
+      progressMsg.style.display = 'block';
+      progressMsg.innerText = message;
+
+      // 3. Gerakkan outliner SVG (Panjang garisan ialah 440)
+      const circumference = 440;
+      const offset = circumference - (percent / 100) * circumference;
+      progressRing.style.strokeDashoffset = offset;
+
+      if (profilePdfResult) profilePdfResult.style.display = 'none';
+    };
 
     try {
+      updateProgress(5, "Membaca fail...");
+
       if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
       } else {
@@ -4077,59 +4111,63 @@ document.addEventListener('DOMContentLoaded', () => {
       const pdf = await loadingTask.promise;
       
       let fullText = '';
-      
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const totalPages = pdf.numPages;
+
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ');
         fullText += pageText + '\n';
+        
+        const progress = 10 + Math.round((pageNum / totalPages) * 30);
+        updateProgress(progress, `Mengekstrak halaman ${pageNum}/${totalPages}`);
       }
 
       console.log("V6.5.2 Profile PDF extracted. Length:", fullText.length);
       
-      if (profilePdfProcessing) {
-        profilePdfProcessing.innerHTML = `
-          <div style="margin:10px 0;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:bold; color:#1e40af;">
-              <span>Menganalisis dengan backend AI...</span>
-              <span>Memproses</span>
-            </div>
-            <div style="width:100%; background:#e2e8f0; height:10px; border-radius:5px; overflow:hidden;">
-              <div style="width:70%; background:linear-gradient(90deg, #3b82f6, #60a5fa); height:100%;"></div>
-            </div>
-          </div>`;
-      }
+      updateProgress(45, "Menganalisis dengan AI...");
+      
+      let aiProgress = 45;
+      aiInterval = setInterval(() => {
+        if (aiProgress < 95) {
+          aiProgress += 1;
+          updateProgress(aiProgress, "Menganalisis dengan AI...");
+        }
+      }, 300);
 
       extractedProfileData = await processProfileTextWithAI(fullText);
       
-      if (profilePdfProcessing) {
-        profilePdfProcessing.style.display = 'none';
-      }
+      if (aiInterval) clearInterval(aiInterval);
       
+      updateProgress(100, "Selesai!");
+      
+      // MEMAINKAN BUNYI SUCCESS KETIKA MENCAPAI 100%
       await playSuccessSound();
       
-      displayProfileExtractedData(extractedProfileData);
-      
-      if (profilePdfResult) {
-        profilePdfResult.style.display = 'block';
-      }
+      // Tunggu 1 saat untuk paparkan "100% Selesai" sebelum memaparkan borang Profile
+      setTimeout(() => {
+        // Kembalikan kotak ke keadaan asal (bulat semula)
+        document.getElementById('status-box-profile').classList.replace('morph-square', 'morph-circle');
+        document.getElementById('progress-ring-profile').style.strokeDashoffset = 440;
+        document.getElementById('percentage-profile').innerHTML = `🏢<br><span>Pilih Profil</span>`;
+        document.getElementById('profilePdfProgressMsg').style.display = 'none';
+
+        displayProfileExtractedData(extractedProfileData);
+        if (profilePdfResult) {
+          profilePdfResult.style.display = 'block';
+        }
+      }, 1000);
       
       storageWrapper.set({ 'stb_extracted_profile_data': extractedProfileData });
       
     } catch (error) {
       console.error("V6.5.2 Profile AI Error:", error);
+      if (aiInterval) clearInterval(aiInterval);
       
+      // MEMAINKAN BUNYI ERROR JIKA GAGAL
       await playErrorSound();
       
-      if (profilePdfProcessing) {
-        profilePdfProcessing.innerHTML = `
-          <div style="background:#fee2e2; padding:10px; border-radius:6px; border:1px solid #ef4444; color:#991b1b;">
-            <strong>Ralat:</strong> ${error.message}
-          </div>`;
-        setTimeout(() => {
-          if (profilePdfProcessing) profilePdfProcessing.style.display = 'none';
-        }, 3000);
-      }
+      document.getElementById('profilePdfProgressMsg').innerHTML = `<span style="color:#ef4444; font-weight:bold;">Ralat: ${error.message}</span>`;
       alert("Gagal memproses profile PDF: " + error.message);
     }
   }
