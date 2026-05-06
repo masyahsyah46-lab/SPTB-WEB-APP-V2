@@ -3857,24 +3857,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function clearPdfData() {
-    if (pdfFileInput && pdfFileInput.parentNode) {
-      const newInput = document.createElement('input');
-      newInput.type = 'file';
-      newInput.id = pdfFileInput.id;
-      newInput.className = pdfFileInput.className;
-      newInput.accept = 'application/pdf';
-      newInput.style.display = 'none';
-      pdfFileInput.parentNode.replaceChild(newInput, pdfFileInput);
-      
-      pdfFileInput = newInput;
-      
-      pdfFileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-          updateFileName(e.target.files[0].name);
-        } else {
-          updateFileName('Tiada fail dipilih');
-        }
-      });
+    if (pdfFileInput) {
+      pdfFileInput.value = ''; // Kosongkan fail tanpa buang fungsi AI
     }
 
     if (pdfFileName) {
@@ -4015,23 +3999,8 @@ document.addEventListener('DOMContentLoaded', () => {
       previewQrCode.src = '';
     }
     
-    if (profilePdfInput && profilePdfInput.parentNode) {
-      const newInput = document.createElement('input');
-      newInput.type = 'file';
-      newInput.id = profilePdfInput.id;
-      newInput.className = profilePdfInput.className;
-      newInput.accept = 'application/pdf';
-      newInput.style.display = 'none';
-      profilePdfInput.parentNode.replaceChild(newInput, profilePdfInput);
-      profilePdfInput = newInput;
-      
-      profilePdfInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-          updateProfileFileName(e.target.files[0].name);
-        } else {
-          updateProfileFileName('Tiada fail dipilih');
-        }
-      });
+    if (profilePdfInput) {
+      profilePdfInput.value = ''; // Kosongkan fail tanpa buang fungsi AI
     }
     
     if (profilePdfFileName) {
@@ -4440,24 +4409,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function clearProfileData() {
-    if (profilePdfInput && profilePdfInput.parentNode) {
-      const newInput = document.createElement('input');
-      newInput.type = 'file';
-      newInput.id = profilePdfInput.id;
-      newInput.className = profilePdfInput.className;
-      newInput.accept = 'application/pdf';
-      newInput.style.display = 'none';
-      profilePdfInput.parentNode.replaceChild(newInput, profilePdfInput);
-      
-      profilePdfInput = newInput;
-      
-      profilePdfInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-          updateProfileFileName(e.target.files[0].name);
-        } else {
-          updateProfileFileName('Tiada fail dipilih');
-        }
-      });
+    if (profilePdfInput) {
+      profilePdfInput.value = ''; // Kosongkan fail tanpa buang fungsi AI
     }
 
     if (profilePdfFileName) {
