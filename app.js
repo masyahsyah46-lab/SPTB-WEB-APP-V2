@@ -9042,6 +9042,185 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       saveDatabaseFormData();
     }
   });
+// =========================================================================
+  // FUNGSI SEMAKAN CEPAT PERSONEL (QUICK CHECK) - DIKEMASKINI
+  // =========================================================================
+  const btnSemakCepat = document.getElementById('btnSemakCepat');
+  const quickCheckModal = document.getElementById('quickCheckModal');
+  const quickCheckClose = document.getElementById('quickCheckClose');
+  const btnSelesaiQuickCheck = document.getElementById('btnSelesaiQuickCheck');
+  const quickCheckContent = document.getElementById('quickCheckContent');
+
+  if (btnSemakCepat) {
+      btnSemakCepat.addEventListener('click', () => {
+          playSoundEffect('ui_click.mp3');
+          openQuickCheckModal();
+      });
+  }
+
+  const closeQCModal = () => {
+      if (quickCheckModal) quickCheckModal.style.display = 'none';
+      playSoundEffect('ui_click.mp3');
+  };
+  
+  if (quickCheckClose) quickCheckClose.addEventListener('click', closeQCModal);
+  if (btnSelesaiQuickCheck) btnSelesaiQuickCheck.addEventListener('click', closeQCModal);
+
+  function openQuickCheckModal() {
+      if (!quickCheckContent) return;
+      quickCheckContent.innerHTML = ''; 
+
+      const cards = document.querySelectorAll('.person-card');
+
+      if (cards.length === 0) {
+          quickCheckContent.innerHTML = '<div style="text-align:center; color:#64748b; padding: 20px; font-weight: bold;">Tiada personel ditambah. Sila klik "Tambah Personel" di bawah.</div>';
+      } else {
+          cards.forEach((card, index) => {
+              const nameInputOriginal = card.querySelector('.p-name');
+              const name = nameInputOriginal?.value || '';
+              const icInput = card.querySelector('.status-ic');
+              const sbInput = card.querySelector('.status-sb');
+              const epfInput = card.querySelector('.status-epf');
+
+              if (!icInput || !sbInput || !epfInput) return; 
+              
+              const div = document.createElement('div');
+              div.style.cssText = "background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;";
+              
+              div.innerHTML = `
+                  <button class="qc-btn-delete" data-index="${index}" style="position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">🗑️ Buang</button>
+                  
+                  <div style="margin-bottom: 12px; border-bottom: 2px dashed #e2e8f0; padding-bottom: 12px; padding-right: 80px;">
+                      <label style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 5px; display: block;">NAMA PERSONEL:</label>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                          <span style="font-size: 1.2rem;">👤</span>
+                          <input type="text" class="qc-input-name" value="${name}" placeholder="MASUKKAN NAMA" style="width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-weight: bold; font-size: 0.95rem; text-transform: uppercase; outline: none; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+                      </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+                      ${createQuickCheckFieldUI('IC', icInput.value, index, 'ic')}
+                      ${createQuickCheckFieldUI('SB', sbInput.value, index, 'sb')}
+                      ${createQuickCheckFieldUI('EPF', epfInput.value, index, 'epf')}
+                  </div>
+              `;
+              quickCheckContent.appendChild(div);
+
+              // 1. Fungsi Edit/Sync Nama Personel
+              const qcNameInput = div.querySelector('.qc-input-name');
+              qcNameInput.addEventListener('input', (e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                  if (nameInputOriginal) {
+                      nameInputOriginal.value = e.target.value;
+                      nameInputOriginal.dispatchEvent(new Event('input', { bubbles: true }));
+                      saveFormData();
+                  }
+              });
+
+              // 2. Fungsi Buang Personel
+              const delBtn = div.querySelector('.qc-btn-delete');
+              delBtn.addEventListener('click', () => {
+                  if (confirm("Adakah anda pasti mahu membuang personel ini?")) {
+                      card.remove(); // Buang kotak di borang asal
+                      saveFormData();
+                      openQuickCheckModal(); // Refresh modal
+                  }
+              });
+              
+              // 3. Fungsi Menaip dan Butang (✓/✗)
+              ['ic', 'sb', 'epf'].forEach(type => {
+                  const btnRight = div.querySelector(`.qc-btn-right-${type}-${index}`);
+                  const btnWrong = div.querySelector(`.qc-btn-wrong-${type}-${index}`);
+                  const displayInput = div.querySelector(`.qc-input-${type}-${index}`);
+                  const originalInput = card.querySelector(`.status-${type}`);
+                  
+                  // Benarkan pengguna menaip sendiri (contoh: "TIDAK BERKAITAN")
+                  displayInput.addEventListener('input', (e) => {
+                      const val = e.target.value.toUpperCase();
+                      e.target.value = val;
+                      originalInput.value = val;
+                      
+                      // Tukar warna secara automatik jika mereka menaip ✓ atau X
+                      if (val === '✓') {
+                          displayInput.style.backgroundColor = '#dcfce7'; displayInput.style.color = '#166534';
+                          originalInput.style.backgroundColor = '#dcfce7'; originalInput.style.color = '#166534';
+                      } else if (val === 'X' || val === '✗') {
+                          displayInput.style.backgroundColor = '#fee2e2'; displayInput.style.color = '#991b1b';
+                          originalInput.style.backgroundColor = '#fee2e2'; originalInput.style.color = '#991b1b';
+                      } else {
+                          displayInput.style.backgroundColor = '#eff6ff'; displayInput.style.color = '#1e40af';
+                          originalInput.style.backgroundColor = '#eff6ff'; originalInput.style.color = '#1e40af';
+                      }
+                      
+                      originalInput.dispatchEvent(new Event('input', { bubbles: true }));
+                      saveFormData();
+                  });
+
+                  const updateStatus = (statusVal, bgColor, textColor) => {
+                      displayInput.value = statusVal;
+                      displayInput.style.backgroundColor = bgColor;
+                      displayInput.style.color = textColor;
+                      
+                      originalInput.value = statusVal;
+                      originalInput.style.backgroundColor = bgColor;
+                      originalInput.style.color = textColor;
+                      originalInput.dispatchEvent(new Event('input', { bubbles: true }));
+                      saveFormData();
+                  };
+
+                  if (btnRight) {
+                      btnRight.addEventListener('click', () => updateStatus('✓', '#dcfce7', '#166534'));
+                  }
+                  if (btnWrong) {
+                      btnWrong.addEventListener('click', () => updateStatus('X', '#fee2e2', '#991b1b'));
+                  }
+              });
+          });
+      }
+
+      // 4. Tambah Butang "Tambah Personel" di bahagian bawah Modal
+      const addBtnContainer = document.createElement('div');
+      addBtnContainer.style.textAlign = 'center';
+      addBtnContainer.style.marginTop = '20px';
+      addBtnContainer.innerHTML = `<button class="btn btn-blue" style="padding: 12px 25px; font-size: 0.95rem; border-radius: 30px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">+ Tambah Personel Baru</button>`;
+      
+      addBtnContainer.querySelector('button').addEventListener('click', () => {
+          addPerson(); // Fungsi sistem asal untuk tambah kad
+          saveFormData();
+          openQuickCheckModal(); // Refresh modal supaya kotak baru muncul
+          
+          // Automatik scroll ke bawah supaya nampak personel baru ditambah
+          setTimeout(() => {
+              if (quickCheckContent) {
+                  quickCheckContent.scrollTop = quickCheckContent.scrollHeight;
+              }
+          }, 100);
+      });
+
+      quickCheckContent.appendChild(addBtnContainer);
+      quickCheckModal.style.display = 'flex';
+  }
+
+  function createQuickCheckFieldUI(label, value, index, type) {
+      let bg = '#eff6ff';
+      let color = '#1e40af';
+      if (value === '✓') { bg = '#dcfce7'; color = '#166534'; }
+      else if (value === 'X' || value === '✗') { bg = '#fee2e2'; color = '#991b1b'; }
+      
+      // 'readonly' telah dibuang dan 'placeholder' diletakkan
+      return `
+          <div style="background: white; border: 1px solid #e5e7eb; padding: 10px; border-radius: 8px;">
+              <label style="font-size: 0.8rem; font-weight: bold; color: #64748b; margin-bottom: 5px; display: block;">${label}</label>
+              <div style="position: relative; display: flex; height: 38px;">
+                  <input type="text" class="qc-input-${type}-${index}" value="${value}" placeholder="Catatan..." style="width: 100%; padding: 0 70px 0 10px; font-weight: bold; font-size: 0.9rem; text-align: left; border: 1px solid #cbd5e1; border-radius: 6px; background-color: ${bg}; color: ${color}; outline: none; text-transform: uppercase;">
+                  <div style="position: absolute; right: 3px; top: 3px; display: flex; gap: 4px; height: calc(100% - 6px);">
+                      <button type="button" class="qc-btn-right-${type}-${index}" title="Lengkap" style="width: 30px; border: none; border-radius: 4px; background: linear-gradient(135deg, #10b981, #059669); color: white; cursor: pointer; font-weight: bold; font-size: 1.1rem;">✓</button>
+                      <button type="button" class="qc-btn-wrong-${type}-${index}" title="Tidak Lengkap" style="width: 30px; border: none; border-radius: 4px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; cursor: pointer; font-weight: bold; font-size: 1.1rem;">✗</button>
+                  </div>
+              </div>
+          </div>
+      `;
+  }
 
 });
 
