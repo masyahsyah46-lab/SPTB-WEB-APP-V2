@@ -409,31 +409,40 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await verifyEmailWithBackend(userEmail);
       
       if (result.authenticated && result.user) {
-        // Autentikasi berjaya
         console.log("V6.5.2 GIS Authentication successful for:", result.user.email);
         
         currentUser = result.user;
         currentUser.role = result.user.role ? result.user.role.toUpperCase().trim() : "";
         
-        // Simpan sesi
+        // Simpan sesi ke storage
         await storageWrapper.set({ 'stb_session': currentUser });
+
+        // --- KOD PENYELAMAT: Tukar paparan di belakang tabir loading ---
+        // Kita sorok skrin login & tunjuk skrin app SEKARANG (sementara loading masih flex)
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (appContainer) appContainer.style.display = 'block';
         
-        // Setup UI pengguna selepas loading progress hampir selesai
-        // Guna setTimeout supaya pengguna sempat melihat progress bar mencapai 100%
+        // Update maklumat profil pengguna
+        if (userBadge) {
+          userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
+          const themeColor = getUserColorHex(currentUser.color);
+          document.documentElement.style.setProperty('--theme-color', themeColor);
+        }
+
+        // Biarkan bar peratusan berjalan sehingga tamat untuk "User Experience" yang premium
         setTimeout(() => {
-          hideLoading(); // Pastikan loading ditutup
-          setupUserUI();
-        }, 1200);
+          hideLoading(); 
+          // Jalankan fungsi initialize app selepas loading hilang
+          setupUserUI(); 
+        }, 1500); 
         
       } else {
-        // Autentikasi gagal
-        hideLoading(); // Tutup progress bar
+        // Jika emel salah/tidak berdaftar, barulah panggil error
+        hideLoading();
         const errorMsg = result.message || 'Akses Ditolak: E-mel tidak didaftarkan dalam sistem.';
-        console.warn("V6.5.2 GIS Authentication failed:", errorMsg);
-        
         handleAuthError(errorMsg);
       }
-      
+     
     } catch (error) {
       console.error("V6.5.2 GIS Authentication error:", error);
       
@@ -532,16 +541,16 @@ document.addEventListener('DOMContentLoaded', () => {
         cancel_on_tap_outside: true
       });
       
-      // Render butang Google Sign-In
+      // Render butang Google Sign-In (Gaya Moden)
       google.accounts.id.renderButton(
         googleButton,
         { 
-          theme: 'outline', 
+          theme: 'filled_blue', // Tukar dari outline ke filled_blue
           size: 'large',
           type: 'standard',
-          text: 'signin_with',
-          shape: 'rectangular',
-          width: '280'
+          shape: 'pill',       // Tukar dari rectangular ke pill (bujur)
+          width: '320',        // Lebar yang lebih selesa
+          logo_alignment: 'left'
         }
       );
       
@@ -6129,19 +6138,22 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   });
 
   function setupUserUI() {
-    if (!loginScreen || !appContainer || !userBadge) return;
+    if (!currentUser || !appContainer || !userBadge) return;
 
-    loginScreen.style.display = 'none';
+    // Pastikan skrin login tertutup
+    if (loginScreen) loginScreen.style.display = 'none';
     appContainer.style.display = 'block';
     
     if (anonymousBadge) anonymousBadge.style.display = 'none';
     userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
     
-    let themeColor = '#2563eb'; 
-    themeColor = getUserColorHex(currentUser.color);
-    
+    let themeColor = getUserColorHex(currentUser.color);
     document.documentElement.style.setProperty('--theme-color', themeColor);
-    initAppBasedOnRole();
+    
+    // Inisialkan aplikasi berdasarkan peranan
+    if (!isAppReady) {
+      initAppBasedOnRole();
+    }
     
     resetInactivityTimer();
   }
