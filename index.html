@@ -1345,11 +1345,6 @@
 
         <!-- TAB 1: BORANG SEMAKAN -->
         <div id="tab-checker" class="tab-content active no-print">
-           <div style="position: sticky; top: 75px; z-index: 999; display: flex; justify-content: flex-end; margin-bottom: -15px; padding-right: 5px;">
-                <button id="btnSemakCepat" class="btn btn-orange" style="box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4); border: 2px solid white; font-size: 0.95rem; border-radius: 30px; padding: 10px 20px;">
-                    ⚡ Semak Cepat Personel
-                </button>
-            </div>
 
             <div class="card pdf-upload-section" style="background: #f8fafc; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                 <h2>🚀 Auto-Ekstrak Borang (AI)</h2>
@@ -1421,7 +1416,16 @@
                 </div>
             </div>
 
-            <div class="card"><h2>👤 Personel</h2><div id="personnelList"></div><button id="addPersonBtn" class="btn btn-add">+ Tambah Personel</button></div>
+             <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.05); margin-bottom: 15px; padding-bottom: 8px;">
+                    <h2 style="border: none; margin-bottom: 0; padding-bottom: 0;">👤 Personel</h2>
+                    <button id="btnSemakCepat" class="btn btn-orange" style="box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3); border: 2px solid white; font-size: 0.85rem; border-radius: 30px; padding: 8px 16px;">
+                        ⚡ Semak Cepat
+                    </button>
+                </div>
+                <div id="personnelList"></div>
+                <button id="addPersonBtn" class="btn btn-add">+ Tambah Personel</button>
+            </div>
 
             <div class="card">
                 <h2>📁 Dokumen & KWSP</h2>
