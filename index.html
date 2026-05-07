@@ -1833,6 +1833,27 @@
             </div>
         </div>
     </div>
+        <div class="admin-stats-modal" id="type-modal-bakul" style="display: none; z-index: 10002;">
+            <div class="admin-stats-content" style="max-width: 400px; width: 90%; padding: 25px; text-align: center; border-top: 5px solid #2563eb;">
+                <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 1.3rem;">🛒 Simpan ke Bakul</h3>
+                <p style="color: #64748b; margin-bottom: 15px;"><span id="modal-bakul-count" style="font-weight: bold; color: #ef4444; font-size: 1.1rem;">0</span> permohonan dipilih.</p>
+                
+                <div style="text-align: left; margin-bottom: 25px;">
+                    <label style="font-weight: bold; color: #374151; display: block; margin-bottom: 8px;">Pilih Jenis Permohonan:</label>
+                    <select id="modal-bakul-type-select" style="width: 100%; padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; font-weight: bold; color: #1e40af; cursor: pointer;">
+                        <option value="BARU">BARU</option>
+                        <option value="PEMBAHARUAN">PEMBAHARUAN</option>
+                        <option value="UBAH MAKLUMAT">UBAH MAKLUMAT</option>
+                        <option value="UBAH GRED">UBAH GRED</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="btnCancelBakulModal" class="btn btn-white" style="flex: 1; padding: 12px; font-size: 1rem;">Batal</button>
+                    <button id="btnConfirmBakulModal" class="btn btn-blue" style="flex: 1; padding: 12px; font-size: 1rem;">Simpan</button>
+                </div>
+            </div>
+        </div>
 
     <!-- Library Scripts dari CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

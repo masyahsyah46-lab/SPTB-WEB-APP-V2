@@ -9526,11 +9526,22 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   // LOGIK TAPISAN EXCEL & BAKUL PERMOHONAN (PENGESYOR)
   // =========================================================================
 
-  let globalBakulData = []; // Pembolehubah global untuk semakan rentas (cross-check)
+  let globalBakulData = [];
 
-  // KOD BARU: Gunakan event delegation pada document supaya butang upload kebal ralat
+  // FUNGSI BANTUAN: Menyamakan format tarikh Excel (DD/MM/YYYY) ke Database (YYYY-MM-DD)
+  function normalizeDateToDBFormat(dateStr) {
+      if (!dateStr) return '';
+      if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+      }
+      return dateStr;
+  }
+
   document.addEventListener('change', (e) => {
-      // PENGENDALI BUTANG UPLOAD EXCEL
+      // UPLOAD EXCEL
       if (e.target.id === 'excelFileInput') {
           const file = e.target.files[0];
           if (!file) return;
@@ -9551,15 +9562,14 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   alert("Ralat membaca fail Excel. Pastikan ia format .xlsx yang betul.");
               } finally {
                   hideLoading();
-                  e.target.value = ''; // Reset input membolehkan fail sama diupload lagi
+                  e.target.value = ''; 
               }
           };
           reader.readAsArrayBuffer(file);
       }
       
-      // PENGENDALI BUTANG SELECT ALL DI EXCEL
+      // SELECT ALL DI EXCEL
       if (e.target.id === 'selectAllExcelRows') {
-          // Hanya select baris yang tidak didisable (bukan yang dah diproses)
           document.querySelectorAll('.excel-row-check:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
       }
   });
@@ -9568,7 +9578,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       if (rawData.length < 2) return;
       const headers = rawData[0].map(h => String(h).toLowerCase().trim());
       
-      // KEMASKINI: Tambah 'disctrict' dan 'category' pada carian tajuk (header)
       const keys = {
           company: headers.findIndex(h => h.includes('syarikat') || h.includes('company') || h.includes('nama')),
           grade: headers.findIndex(h => h.includes('gred') || h.includes('grade')),
@@ -9579,7 +9588,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       };
 
       if (keys.company === -1 || keys.grade === -1 || keys.cidb === -1) {
-          alert("Format Excel tidak sah. Mesti ada kolum Syarikat, Gred, dan CIDB.");
+          alert("Format Excel tidak sah. Mesti ada kolum Syarikat, Gred, dan CIDB/Reg No.");
           return;
       }
 
@@ -9689,7 +9698,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       document.getElementById('excelRowCount').innerText = filtered.length;
       
       tbody.innerHTML = filtered.map(item => {
-          // Tentukan warna baris
           let rowColorClass = '';
           const tLower = (item.updateType || '').toLowerCase();
           if(tLower.includes('baru')) rowColorClass = 'row-new';
@@ -9697,10 +9705,27 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           else if(tLower.includes('maklumat') || tLower.includes('info')) rowColorClass = 'row-info';
           else if(tLower.includes('gred') || tLower.includes('grade')) rowColorClass = 'row-grade';
 
-          // SEMAKAN STATUS (Bakul & Database)
-          const inBasket = globalBakulData.some(b => b.cidb === item.cidb);
-          const isProcessed = cachedData && cachedData.some(c => c.cidb === item.cidb && c.tarikh_syor && c.tarikh_syor.trim() !== '');
-          const inDrafts = cachedData && cachedData.some(c => c.cidb === item.cidb && (!c.tarikh_syor || c.tarikh_syor.trim() === ''));
+          // KEMASKINI: Semakan status yang ketat (CIDB + Tarikh Mohon)
+          const normExcelDate = normalizeDateToDBFormat(item.dateSubmitted);
+          
+          let isProcessed = false;
+          let inDrafts = false;
+
+          if (cachedData) {
+              for (let c of cachedData) {
+                  // Mesti CIDB sama DAN Tarikh Mohon sama
+                  if (c.cidb === item.cidb && c.start_date === normExcelDate) {
+                      if (c.tarikh_syor && c.tarikh_syor.trim() !== '') {
+                          isProcessed = true;
+                      } else {
+                          inDrafts = true;
+                      }
+                      break;
+                  }
+              }
+          }
+
+          const inBasket = globalBakulData.some(b => b.cidb === item.cidb && normalizeDateToDBFormat(b.dateSubmitted) === normExcelDate);
 
           let statusBadge = '';
           let disableCheckbox = false;
@@ -9708,11 +9733,12 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           if (isProcessed) {
               statusBadge = `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">✅ Telah Disyor</span>`;
               disableCheckbox = true;
+          } else if (inDrafts) {
+              statusBadge = `<span style="background: #3b82f6; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">📝 Belum Hantar</span>`;
+              disableCheckbox = true;
           } else if (inBasket) {
               statusBadge = `<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">🛒 Dalam Bakul</span>`;
               disableCheckbox = true;
-          } else if (inDrafts) {
-              statusBadge = `<span style="background: #3b82f6; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">📝 Belum Hantar</span>`;
           } else {
               statusBadge = `<span style="background: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">✨ Baru</span>`;
           }
@@ -9736,10 +9762,16 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       }).join('');
   }
 
-  // SIMPAN KE BAKUL FIREBASE
+  // =========================================================================
+  // LOGIK MODAL BAKUL & SIMPAN KE FIREBASE
+  // =========================================================================
   const btnSaveToBasket = document.getElementById('btnSaveToBasket');
+  const typeModalBakul = document.getElementById('type-modal-bakul');
+  const btnCancelBakulModal = document.getElementById('btnCancelBakulModal');
+  const btnConfirmBakulModal = document.getElementById('btnConfirmBakulModal');
+
   if (btnSaveToBasket) {
-      btnSaveToBasket.addEventListener('click', async () => {
+      btnSaveToBasket.addEventListener('click', () => {
           if (!currentUserFirebaseCode) {
               alert("Akaun anda tiada kod tapisan dikesan. Anda tidak boleh menyimpan ke bakul.");
               return;
@@ -9750,8 +9782,24 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               return;
           }
           
-          btnSaveToBasket.innerText = "Menyimpan...";
-          btnSaveToBasket.disabled = true;
+          document.getElementById('modal-bakul-count').innerText = checked.length;
+          if (typeModalBakul) typeModalBakul.style.display = 'flex';
+      });
+  }
+
+  if (btnCancelBakulModal) {
+      btnCancelBakulModal.addEventListener('click', () => {
+          if (typeModalBakul) typeModalBakul.style.display = 'none';
+      });
+  }
+
+  if (btnConfirmBakulModal) {
+      btnConfirmBakulModal.addEventListener('click', async () => {
+          const checked = document.querySelectorAll('.excel-row-check:checked');
+          const selectedType = document.getElementById('modal-bakul-type-select').value;
+          
+          btnConfirmBakulModal.innerText = "Menyimpan...";
+          btnConfirmBakulModal.disabled = true;
 
           const idMap = new Map(excelRawData.map(i => [i.id, i]));
           const batch = [];
@@ -9759,7 +9807,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           checked.forEach(cb => {
               const item = idMap.get(parseInt(cb.value));
               if(item) {
-                  let typeToSave = item.updateType !== '-' ? item.updateType : "BARU";
+                  let typeToSave = selectedType;
+                  if (item.updateType && item.updateType !== '-') {
+                      typeToSave = `${selectedType} (${item.updateType})`;
+                  }
                   
                   batch.push(dbFirestore.collection("applications").add({
                       company: item.company,
@@ -9785,14 +9836,16 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               checked.forEach(cb => cb.checked = false);
               const checkAllBox = document.getElementById('selectAllExcelRows');
               if(checkAllBox) checkAllBox.checked = false;
+              
+              if (typeModalBakul) typeModalBakul.style.display = 'none';
               switchTab('tab-bakul');
           } catch(e) {
               console.error("Gagal simpan ke bakul:", e);
               playSoundEffect('error_buzz.mp3');
               alert("Ralat sistem. Gagal menyimpan ke bakul Firebase.");
           } finally {
-              btnSaveToBasket.innerText = "🛒 Simpan Ke Bakul";
-              btnSaveToBasket.disabled = false;
+              btnConfirmBakulModal.innerText = "Simpan";
+              btnConfirmBakulModal.disabled = false;
           }
       });
   }
@@ -9810,21 +9863,30 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   bakulData.push({ id: doc.id, ...doc.data() });
               });
               
-              // KOD BARU: Auto-cleanup Firebase Bakul
+              // KEMASKINI: Auto-cleanup Firebase Bakul dengan syarat ketat (CIDB + Tarikh)
               const validBakulData = [];
               bakulData.forEach(d => {
-                  // Semak jika permohonan ini telah ada tarikh syor (telah diproses/tiada di Belum Hantar)
-                  const isProcessed = cachedData && cachedData.some(c => c.cidb === d.cidb && c.tarikh_syor && c.tarikh_syor.trim() !== '');
-                  
-                  if (isProcessed) {
-                      // Padam terus permohonan lama ini dari Bakul Firebase
+                  const normBDate = normalizeDateToDBFormat(d.dateSubmitted);
+                  let shouldDelete = false;
+
+                  if (cachedData) {
+                      for (let c of cachedData) {
+                          // Jika CIDB dan Tarikh Mohon adalah sama
+                          if (c.cidb === d.cidb && c.start_date === normBDate) {
+                              // Kita boleh anggap ia telah diproses jika ia berada di sistem (Drafts/Submitted)
+                              shouldDelete = true;
+                              break;
+                          }
+                      }
+                  }
+
+                  if (shouldDelete) {
                       dbFirestore.collection("applications").doc(d.id).delete().catch(err => console.log(err));
                   } else {
                       validBakulData.push(d);
                   }
               });
 
-              // Kemaskini variable global untuk rujukan Tapisan Excel
               globalBakulData = validBakulData;
 
               // Susun terbaharu di atas
@@ -9878,19 +9940,18 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   }).join('');
               }
 
-              // Render semula tapisan excel secara automatik untuk update lencana status (Badge)
+              // Update lencana di Tapisan Excel
               if (document.getElementById('tab-tapisan').classList.contains('active')) {
                   if (typeof renderExcelTable === 'function') renderExcelTable();
               }
           });
   }
 
-  // Event Delegation untuk butang di dalam Bakul
+  // Event Delegation untuk Bakul
   const bakulTableBody = document.getElementById('bakulTableBody');
   if (bakulTableBody && !bakulTableBody.hasAttribute('data-listener-bakul')) {
       bakulTableBody.setAttribute('data-listener-bakul', 'true');
       bakulTableBody.addEventListener('click', async (e) => {
-          
           const prosesBtn = e.target.closest('.btn-proses-bakul');
           const padamBtn = e.target.closest('.btn-padam-bakul');
 
@@ -9934,7 +9995,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   }
               }
               
-              // Auto-Pilih Radio Button (Jenis Permohonan)
               const tLower = type.toLowerCase();
               let radioVal = 'baru';
               if(tLower.includes('pembaharuan') || tLower.includes('renewal')) radioVal = 'pembaharuan';
@@ -9948,14 +10008,18 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
               if(radioVal === 'ubah_maklumat') {
                   document.getElementById('input_ubah_maklumat').style.display = 'block';
-                  document.getElementById('input_ubah_maklumat').value = type;
+                  // Ambil spesifik jenis dari kurungan, contoh: UBAH MAKLUMAT (Minor) -> Minor
+                  let specInfo = type;
+                  if (type.includes('(')) specInfo = type.split('(')[1].replace(')', '').trim();
+                  document.getElementById('input_ubah_maklumat').value = specInfo;
               }
               if(radioVal === 'ubah_gred') {
                   document.getElementById('input_ubah_gred').style.display = 'block';
-                  document.getElementById('input_ubah_gred').value = type;
+                  let specInfo = type;
+                  if (type.includes('(')) specInfo = type.split('(')[1].replace(')', '').trim();
+                  document.getElementById('input_ubah_gred').value = specInfo;
               }
 
-              // KOD BARU: Masukkan Tarikh Mohon secara Autofill
               if (dateSubmitted && dateSubmitted !== '-') {
                   const parts = dateSubmitted.split('/');
                   if (parts.length === 3) {
@@ -9977,11 +10041,18 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   }
               }
 
-              // Save Data to WebApp memory
+              try {
+                  await dbFirestore.collection("applications").doc(docId).update({
+                      status: 'Processed',
+                      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+              } catch(err) {
+                  console.error("Gagal update status bakul:", err);
+              }
+
               saveFormData();
               saveDatabaseFormData();
 
-              // Bawa pengguna ke tab borang
               switchTab('stb');
               alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
           }
