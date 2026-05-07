@@ -9681,12 +9681,11 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       `).join('');
   }
 
-  const selectAllExcelRows = document.getElementById('selectAllExcelRows');
-  if(selectAllExcelRows) {
-    selectAllExcelRows.addEventListener('change', (e) => {
-        document.querySelectorAll('.excel-row-check').forEach(cb => cb.checked = e.target.checked);
-    });
-  }
+      // KOD BARU: Event listener yang lebih kuat untuk butang Select All (Tapisan Excel)
+  document.addEventListener('change', (e) => {
+      if (e.target.id === 'selectAllExcelRows') {
+          document.querySelectorAll('.excel-row-check').forEach(cb => cb.checked = e.target.checked);
+      }
 
   // SIMPAN KE BAKUL FIREBASE
   const btnSaveToBasket = document.getElementById('btnSaveToBasket');
@@ -9768,117 +9767,167 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   return timeB - timeA;
               });
 
-              document.getElementById('bakulCountBadge').innerText = bakulData.length;
+              const badge = document.getElementById('bakulCountBadge');
+              if (badge) badge.innerText = bakulData.length;
               
               const tbody = document.getElementById('bakulTableBody');
+              if (!tbody) return;
+
               if(bakulData.length === 0) {
                   tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color:#94a3b8; font-style: italic;">Bakul Kosong. Sila tapis dan tambah dari Tapisan Excel.</td></tr>`;
               } else {
-                  tbody.innerHTML = bakulData.map(d => `
-                      <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+                  tbody.innerHTML = bakulData.map(d => {
+                      // KOD BARU: Tentukan Warna Baris
+                      let rowColorClass = '';
+                      const tLower = (d.type || '').toLowerCase();
+                      if(tLower.includes('baru')) rowColorClass = 'row-new';
+                      else if(tLower.includes('pembaharuan') || tLower.includes('renewal')) rowColorClass = 'row-renewal';
+                      else if(tLower.includes('maklumat') || tLower.includes('info')) rowColorClass = 'row-info';
+                      else if(tLower.includes('gred') || tLower.includes('grade')) rowColorClass = 'row-grade';
+
+                      return `
+                      <tr class="${rowColorClass}" style="border-bottom: 1px solid #f1f5f9;">
                           <td style="font-weight:bold; color: #1e3a8a; font-size: 1.05rem;">${d.company}</td>
                           <td>
                               <span style="font-weight:bold; color: #f59e0b;">${d.grade}</span> <br>
                               <span style="font-size:0.85rem; color:#64748b; font-family: monospace;">${d.cidb}</span>
                           </td>
                           <td>${d.district}</td>
-                          <td><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid #cbd5e1;">${d.type}</span></td>
+                          <td><span style="background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid #cbd5e1; color:#333; font-weight:bold;">${d.type}</span></td>
+                          <td><span style="font-weight:600; color:#475569;">${d.dateSubmitted || '-'}</span></td>
                           <td>
                               <div style="display: flex; gap: 8px;">
-                                  <button class="btn btn-blue" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; flex: 1;" onclick="prosesPermohonanBakul('${d.id}', '${d.company.replace(/'/g, "\\'")}', '${d.cidb}', '${d.grade}', '${d.type.replace(/'/g, "\\'")}')">▶ Proses Form</button>
-                                  <button class="btn btn-delete" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; background: #ef4444;" onclick="padamDariBakul('${d.id}')">🗑️</button>
+                                  <button class="btn btn-blue btn-proses-bakul" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; flex: 1;" 
+                                      data-id="${d.id}" 
+                                      data-company="${(d.company || '').replace(/"/g, '&quot;')}" 
+                                      data-cidb="${d.cidb || ''}" 
+                                      data-grade="${d.grade || ''}" 
+                                      data-type="${(d.type || '').replace(/"/g, '&quot;')}"
+                                      data-date="${d.dateSubmitted || ''}">Proses</button>
+                                  <button class="btn btn-delete btn-padam-bakul" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; background: #ef4444;" data-id="${d.id}">Padam</button>
                               </div>
                           </td>
                       </tr>
-                  `).join('');
+                      `;
+                  }).join('');
               }
           });
   }
 
-  window.padamDariBakul = async (docId) => {
-      playSoundEffect('ui_click.mp3');
-      if(confirm("Adakah anda pasti mahu memadam permohonan ini dari bakul? Ia akan dipadam selamanya.")) {
-          try {
-              await dbFirestore.collection("applications").doc(docId).delete();
-              playSoundEffect('positive_chime.mp3');
-          } catch(e) {
-              console.error("Gagal padam:", e);
-              playSoundEffect('error_buzz.mp3');
-              alert("Gagal memadam dari bakul.");
+  // KOD BARU: Event Delegation untuk butang di dalam Bakul (Penyelesaian Butang Tak Fungsi)
+  const bakulTableBody = document.getElementById('bakulTableBody');
+  if (bakulTableBody && !bakulTableBody.hasAttribute('data-listener-bakul')) {
+      bakulTableBody.setAttribute('data-listener-bakul', 'true');
+      bakulTableBody.addEventListener('click', async (e) => {
+          
+          const prosesBtn = e.target.closest('.btn-proses-bakul');
+          const padamBtn = e.target.closest('.btn-padam-bakul');
+
+          if (padamBtn) {
+              playSoundEffect('ui_click.mp3');
+              const docId = padamBtn.getAttribute('data-id');
+              if(confirm("Adakah anda pasti mahu memadam permohonan ini dari bakul? Ia akan dipadam selamanya.")) {
+                  try {
+                      await dbFirestore.collection("applications").doc(docId).delete();
+                      playSoundEffect('positive_chime.mp3');
+                  } catch(err) {
+                      console.error("Gagal padam:", err);
+                      playSoundEffect('error_buzz.mp3');
+                      alert("Gagal memadam dari bakul.");
+                  }
+              }
+          } else if (prosesBtn) {
+              playSoundEffect('ui_click.mp3');
+              const docId = prosesBtn.getAttribute('data-id');
+              const company = prosesBtn.getAttribute('data-company');
+              const cidb = prosesBtn.getAttribute('data-cidb');
+              const grade = prosesBtn.getAttribute('data-grade');
+              const type = prosesBtn.getAttribute('data-type');
+              const dateSubmitted = prosesBtn.getAttribute('data-date');
+
+              const hasUnsaved = checkUnsavedData();
+              if (hasUnsaved) {
+                  if (!confirm("Borang semakan anda sekarang mempunyai data. Anda pasti mahu overwrite (timpa) borang ini?")) {
+                      return;
+                  }
+                  await resetFormForEdit();
+              }
+
+              // 1. Set Borang Semakan (Tab Checker)
+              document.getElementById('borang_syarikat').value = company;
+              document.getElementById('borang_cidb').value = cidb;
+              const gredSelect = document.getElementById('borang_gred');
+              if(gredSelect) {
+                  for(let i=0; i<gredSelect.options.length; i++) {
+                      if(gredSelect.options[i].value === grade.toUpperCase()) gredSelect.selectedIndex = i;
+                  }
+              }
+              
+              // Auto-Pilih Radio Button (Jenis Permohonan)
+              const tLower = type.toLowerCase();
+              let radioVal = 'baru';
+              if(tLower.includes('pembaharuan') || tLower.includes('renewal')) radioVal = 'pembaharuan';
+              else if(tLower.includes('maklumat') || tLower.includes('info')) radioVal = 'ubah_maklumat';
+              else if(tLower.includes('gred') || tLower.includes('grade')) radioVal = 'ubah_gred';
+              
+              const radios = document.getElementsByName('jenisApp');
+              for(let r of radios) {
+                  r.checked = (r.value === radioVal);
+              }
+
+              // Jika ada maklumat / gred ubah
+              if(radioVal === 'ubah_maklumat') {
+                  document.getElementById('input_ubah_maklumat').style.display = 'block';
+                  document.getElementById('input_ubah_maklumat').value = type;
+              }
+              if(radioVal === 'ubah_gred') {
+                  document.getElementById('input_ubah_gred').style.display = 'block';
+                  document.getElementById('input_ubah_gred').value = type;
+              }
+
+              // KOD BARU: Masukkan Tarikh Mohon
+              if (dateSubmitted && dateSubmitted !== '-') {
+                  const parts = dateSubmitted.split('/');
+                  if (parts.length === 3) {
+                      // Tukar format DD/MM/YYYY ke YYYY-MM-DD
+                      const formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                      const bTarikh = document.getElementById('borang_tarikh_mohon');
+                      const dbTarikh = document.getElementById('db_start_date');
+                      if(bTarikh) bTarikh.value = formattedDate;
+                      if(dbTarikh) dbTarikh.value = formattedDate;
+                  }
+              }
+
+              // 2. Set Database Form
+              document.getElementById('db_syarikat').value = company;
+              document.getElementById('db_cidb').value = cidb;
+              const dbGredSelect = document.getElementById('db_gred');
+              if(dbGredSelect) {
+                  for(let i=0; i<dbGredSelect.options.length; i++) {
+                      if(dbGredSelect.options[i].value === grade.toUpperCase()) dbGredSelect.selectedIndex = i;
+                  }
+              }
+
+              // 3. Mark Firebase as 'Processed' supaya hilang dari bakul
+              try {
+                  await dbFirestore.collection("applications").doc(docId).update({
+                      status: 'Processed',
+                      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+              } catch(err) {
+                  console.error("Gagal update status bakul:", err);
+              }
+
+              // Save Data to WebApp memory
+              saveFormData();
+              saveDatabaseFormData();
+
+              // Bawa pengguna ke tab borang
+              switchTab('stb');
+              alert("Maklumat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
           }
-      }
-  };
-
-  window.prosesPermohonanBakul = async (docId, company, cidb, grade, type) => {
-      playSoundEffect('ui_click.mp3');
-      const hasUnsaved = checkUnsavedData();
-      if (hasUnsaved) {
-          if (!confirm("Borang semakan anda sekarang mempunyai data. Anda pasti mahu overwrite (timpa) borang ini?")) {
-              return;
-          }
-          await resetFormForEdit();
-      }
-
-      // 1. Set Borang Semakan (Tab Checker)
-      document.getElementById('borang_syarikat').value = company;
-      document.getElementById('borang_cidb').value = cidb;
-      const gredSelect = document.getElementById('borang_gred');
-      if(gredSelect) {
-          for(let i=0; i<gredSelect.options.length; i++) {
-              if(gredSelect.options[i].value === grade.toUpperCase()) gredSelect.selectedIndex = i;
-          }
-      }
-      
-      // Auto-Pilih Radio Button (Jenis Permohonan)
-      const tLower = type.toLowerCase();
-      let radioVal = 'baru';
-      if(tLower.includes('pembaharuan') || tLower.includes('renewal')) radioVal = 'pembaharuan';
-      else if(tLower.includes('maklumat') || tLower.includes('info')) radioVal = 'ubah_maklumat';
-      else if(tLower.includes('gred') || tLower.includes('grade')) radioVal = 'ubah_gred';
-      
-      const radios = document.getElementsByName('jenisApp');
-      for(let r of radios) {
-          r.checked = (r.value === radioVal);
-      }
-
-      // Jika ada maklumat / gred ubah: letakkan teks asal ke input conditional
-      if(radioVal === 'ubah_maklumat') {
-          document.getElementById('input_ubah_maklumat').style.display = 'block';
-          document.getElementById('input_ubah_maklumat').value = type;
-      }
-      if(radioVal === 'ubah_gred') {
-          document.getElementById('input_ubah_gred').style.display = 'block';
-          document.getElementById('input_ubah_gred').value = type;
-      }
-
-      // 2. Set Database Form
-      document.getElementById('db_syarikat').value = company;
-      document.getElementById('db_cidb').value = cidb;
-      const dbGredSelect = document.getElementById('db_gred');
-      if(dbGredSelect) {
-          for(let i=0; i<dbGredSelect.options.length; i++) {
-              if(dbGredSelect.options[i].value === grade.toUpperCase()) dbGredSelect.selectedIndex = i;
-          }
-      }
-
-      // 3. Mark Firebase as 'Processed' supaya hilang dari bakul
-      try {
-          await dbFirestore.collection("applications").doc(docId).update({
-              status: 'Processed',
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-      } catch(e) {
-          console.error("Gagal update status bakul:", e);
-      }
-
-      // Save Data to WebApp memory
-      saveFormData();
-      saveDatabaseFormData();
-
-      // Bawa pengguna ke tab borang
-      switchTab('stb');
-      alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
-  };
+      });
+  }
 
 });
 
