@@ -9526,12 +9526,17 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   // LOGIK TAPISAN EXCEL & BAKUL PERMOHONAN (PENGESYOR)
   // =========================================================================
 
-  const excelFileInput = document.getElementById('excelFileInput');
-  if (excelFileInput) {
-      excelFileInput.addEventListener('change', (e) => {
+  let globalBakulData = []; // Pembolehubah global untuk semakan rentas (cross-check)
+
+  // KOD BARU: Gunakan event delegation pada document supaya butang upload kebal ralat
+  document.addEventListener('change', (e) => {
+      // PENGENDALI BUTANG UPLOAD EXCEL
+      if (e.target.id === 'excelFileInput') {
           const file = e.target.files[0];
           if (!file) return;
-          document.getElementById('excelFileName').innerText = file.name;
+          
+          const nameLabel = document.getElementById('excelFileName');
+          if (nameLabel) nameLabel.innerText = file.name;
           
           simulateLoadingWithSteps(['Membaca fail Excel...', 'Menapis data berdasarkan ketetapan anda...'], 'Sila Tunggu');
           
@@ -9546,11 +9551,18 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   alert("Ralat membaca fail Excel. Pastikan ia format .xlsx yang betul.");
               } finally {
                   hideLoading();
+                  e.target.value = ''; // Reset input membolehkan fail sama diupload lagi
               }
           };
           reader.readAsArrayBuffer(file);
-      });
-  }
+      }
+      
+      // PENGENDALI BUTANG SELECT ALL DI EXCEL
+      if (e.target.id === 'selectAllExcelRows') {
+          // Hanya select baris yang tidak didisable (bukan yang dah diproses)
+          document.querySelectorAll('.excel-row-check:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+      }
+  });
 
   function processExcelForTapisan(rawData) {
       if (rawData.length < 2) return;
@@ -9574,9 +9586,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
       excelRawData = rawData.slice(1).filter(row => {
           const g = String(row[keys.grade] || '').trim();
-          if (!gradeRegex.test(g)) return false; // Hanya G4-G7
+          if (!gradeRegex.test(g)) return false; 
           
-          // Tapisan ketat mengikut Profil Firebase Pengesyor
           if (firebaseUserRules && firebaseUserRules.cidbEndsWith && firebaseUserRules.cidbEndsWith.length > 0) {
               const cidbStr = String(row[keys.cidb] || '').trim();
               const lastDigit = cidbStr.slice(-1);
@@ -9632,7 +9643,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       allExcelDistricts.forEach(d => {
           const isActive = selectedExcelDistricts.has(d);
           const btn = document.createElement('button');
-          // Gunakan gaya asas dari Tailwind tapi diubah kepada inline css utk sistem ni
           btn.style.padding = '8px 15px';
           btn.style.borderRadius = '6px';
           btn.style.fontWeight = 'bold';
@@ -9677,7 +9687,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       document.getElementById('excelRowCount').innerText = filtered.length;
       
       tbody.innerHTML = filtered.map(item => {
-          // Tentukan warna baris mengikut jenis
+          // Tentukan warna baris
           let rowColorClass = '';
           const tLower = (item.updateType || '').toLowerCase();
           if(tLower.includes('baru')) rowColorClass = 'row-new';
@@ -9685,26 +9695,44 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           else if(tLower.includes('maklumat') || tLower.includes('info')) rowColorClass = 'row-info';
           else if(tLower.includes('gred') || tLower.includes('grade')) rowColorClass = 'row-grade';
 
+          // SEMAKAN STATUS (Bakul & Database)
+          const inBasket = globalBakulData.some(b => b.cidb === item.cidb);
+          const isProcessed = cachedData && cachedData.some(c => c.cidb === item.cidb && c.tarikh_syor && c.tarikh_syor.trim() !== '');
+          const inDrafts = cachedData && cachedData.some(c => c.cidb === item.cidb && (!c.tarikh_syor || c.tarikh_syor.trim() === ''));
+
+          let statusBadge = '';
+          let disableCheckbox = false;
+
+          if (isProcessed) {
+              statusBadge = `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">✅ Telah Disyor</span>`;
+              disableCheckbox = true;
+          } else if (inBasket) {
+              statusBadge = `<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">🛒 Dalam Bakul</span>`;
+              disableCheckbox = true;
+          } else if (inDrafts) {
+              statusBadge = `<span style="background: #3b82f6; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">📝 Belum Hantar</span>`;
+          } else {
+              statusBadge = `<span style="background: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">✨ Baru</span>`;
+          }
+
+          const checkboxHtml = disableCheckbox 
+              ? `<input type="checkbox" disabled style="transform: scale(1.2); opacity: 0.3;" title="Telah ada dalam sistem/bakul">`
+              : `<input type="checkbox" class="excel-row-check" value="${item.id}" style="transform: scale(1.2);">`;
+
           return `
-          <tr class="${rowColorClass}" style="border-bottom: 1px solid #f1f5f9;">
-              <td style="text-align:center;"><input type="checkbox" class="excel-row-check" value="${item.id}" style="transform: scale(1.2);"></td>
+          <tr class="${rowColorClass}" style="border-bottom: 1px solid #f1f5f9; ${disableCheckbox ? 'opacity: 0.6;' : ''}">
+              <td style="text-align:center;">${checkboxHtml}</td>
               <td style="font-weight:bold; color: #1e293b;">${item.company}</td>
               <td style="color: #475569;">${item.cidb}</td>
               <td>${item.district}</td>
               <td style="font-weight:bold; color: #f59e0b;">${item.grade}</td>
               <td><span style="font-weight:600; color:#475569;">${item.dateSubmitted}</span></td>
               <td><span style="background: rgba(255,255,255,0.7); color: #333; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">${item.updateType}</span></td>
+              <td style="text-align:center;">${statusBadge}</td>
           </tr>
           `;
       }).join('');
   }
-
-  // PENYELESAIAN ERROR: Penutup ini tertinggal sebelum ini menyebabkan sistem crash
-  document.addEventListener('change', (e) => {
-      if (e.target.id === 'selectAllExcelRows') {
-          document.querySelectorAll('.excel-row-check').forEach(cb => cb.checked = e.target.checked);
-      }
-  }); // <--- PENUTUP YANG TERTINGGAL
 
   // SIMPAN KE BAKUL FIREBASE
   const btnSaveToBasket = document.getElementById('btnSaveToBasket');
@@ -9780,24 +9808,40 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   bakulData.push({ id: doc.id, ...doc.data() });
               });
               
+              // KOD BARU: Auto-cleanup Firebase Bakul
+              const validBakulData = [];
+              bakulData.forEach(d => {
+                  // Semak jika permohonan ini telah ada tarikh syor (telah diproses/tiada di Belum Hantar)
+                  const isProcessed = cachedData && cachedData.some(c => c.cidb === d.cidb && c.tarikh_syor && c.tarikh_syor.trim() !== '');
+                  
+                  if (isProcessed) {
+                      // Padam terus permohonan lama ini dari Bakul Firebase
+                      dbFirestore.collection("applications").doc(d.id).delete().catch(err => console.log(err));
+                  } else {
+                      validBakulData.push(d);
+                  }
+              });
+
+              // Kemaskini variable global untuk rujukan Tapisan Excel
+              globalBakulData = validBakulData;
+
               // Susun terbaharu di atas
-              bakulData.sort((a, b) => {
+              validBakulData.sort((a, b) => {
                   const timeA = a.addedToBasketAt ? a.addedToBasketAt.seconds : 0;
                   const timeB = b.addedToBasketAt ? b.addedToBasketAt.seconds : 0;
                   return timeB - timeA;
               });
 
               const badge = document.getElementById('bakulCountBadge');
-              if (badge) badge.innerText = bakulData.length;
+              if (badge) badge.innerText = validBakulData.length;
               
               const tbody = document.getElementById('bakulTableBody');
               if (!tbody) return;
 
-              if(bakulData.length === 0) {
+              if(validBakulData.length === 0) {
                   tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color:#94a3b8; font-style: italic;">Bakul Kosong. Sila tapis dan tambah dari Tapisan Excel.</td></tr>`;
               } else {
-                  tbody.innerHTML = bakulData.map(d => {
-                      // KOD BARU: Tentukan Warna Baris
+                  tbody.innerHTML = validBakulData.map(d => {
                       let rowColorClass = '';
                       const tLower = (d.type || '').toLowerCase();
                       if(tLower.includes('baru')) rowColorClass = 'row-new';
@@ -9831,10 +9875,15 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                       `;
                   }).join('');
               }
+
+              // Render semula tapisan excel secara automatik untuk update lencana status (Badge)
+              if (document.getElementById('tab-tapisan').classList.contains('active')) {
+                  if (typeof renderExcelTable === 'function') renderExcelTable();
+              }
           });
   }
 
-  // KOD BARU: Event Delegation untuk butang di dalam Bakul (Supaya butang sentiasa berfungsi)
+  // Event Delegation untuk butang di dalam Bakul
   const bakulTableBody = document.getElementById('bakulTableBody');
   if (bakulTableBody && !bakulTableBody.hasAttribute('data-listener-bakul')) {
       bakulTableBody.setAttribute('data-listener-bakul', 'true');
@@ -9908,7 +9957,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               if (dateSubmitted && dateSubmitted !== '-') {
                   const parts = dateSubmitted.split('/');
                   if (parts.length === 3) {
-                      // Tukar format DD/MM/YYYY ke YYYY-MM-DD
                       const formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
                       const bTarikh = document.getElementById('borang_tarikh_mohon');
                       const dbTarikh = document.getElementById('db_start_date');
@@ -9925,16 +9973,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   for(let i=0; i<dbGredSelect.options.length; i++) {
                       if(dbGredSelect.options[i].value === grade.toUpperCase()) dbGredSelect.selectedIndex = i;
                   }
-              }
-
-              // 3. Mark Firebase as 'Processed' supaya hilang dari bakul
-              try {
-                  await dbFirestore.collection("applications").doc(docId).update({
-                      status: 'Processed',
-                      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                  });
-              } catch(err) {
-                  console.error("Gagal update status bakul:", err);
               }
 
               // Save Data to WebApp memory

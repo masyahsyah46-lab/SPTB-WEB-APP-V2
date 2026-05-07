@@ -1695,9 +1695,11 @@
         <div id="tab-tapisan" class="tab-content no-print" style="display:none;">
             <div class="card">
                 <h2>📄 Tapisan Permohonan Excel</h2>
-                <div style="border: 2px dashed #3b82f6; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc;" onclick="document.getElementById('excelFileInput').click()">
+                <div style="border: 2px dashed #3b82f6; border-radius: 12px; padding: 40px; text-align: center; background: #f8fafc;">
                     <div style="font-size: 48px; color: #10b981; margin-bottom: 15px;">📊</div>
-                    <label style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Pilih Fail Excel</label>
+                    <label for="excelFileInput" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: inline-block; transition: transform 0.2s;">
+                        Pilih Fail Excel
+                    </label>
                     <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
                     <p id="excelFileName" style="margin-top: 20px; font-weight: bold; color: #3b82f6;">Tiada fail dipilih</p>
                 </div>
@@ -1726,7 +1728,7 @@
                                     <th>Gred</th>
                                     <th>Tarikh Excel</th>
                                     <th>Update Type</th>
-                                </tr>
+                                    <th>Status Semasa</th> </tr>
                             </thead>
                             <tbody id="excelTableBody"></tbody>
                         </table>
