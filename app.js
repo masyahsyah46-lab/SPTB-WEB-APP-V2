@@ -9676,24 +9676,35 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const filtered = excelRawData.filter(d => selectedExcelDistricts.has(d.district));
       document.getElementById('excelRowCount').innerText = filtered.length;
       
-      tbody.innerHTML = filtered.map(item => `
-          <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+      tbody.innerHTML = filtered.map(item => {
+          // Tentukan warna baris mengikut jenis
+          let rowColorClass = '';
+          const tLower = (item.updateType || '').toLowerCase();
+          if(tLower.includes('baru')) rowColorClass = 'row-new';
+          else if(tLower.includes('pembaharuan') || tLower.includes('renewal')) rowColorClass = 'row-renewal';
+          else if(tLower.includes('maklumat') || tLower.includes('info')) rowColorClass = 'row-info';
+          else if(tLower.includes('gred') || tLower.includes('grade')) rowColorClass = 'row-grade';
+
+          return `
+          <tr class="${rowColorClass}" style="border-bottom: 1px solid #f1f5f9;">
               <td style="text-align:center;"><input type="checkbox" class="excel-row-check" value="${item.id}" style="transform: scale(1.2);"></td>
               <td style="font-weight:bold; color: #1e293b;">${item.company}</td>
               <td style="color: #475569;">${item.cidb}</td>
               <td>${item.district}</td>
               <td style="font-weight:bold; color: #f59e0b;">${item.grade}</td>
-              <td>${item.dateSubmitted}</td>
-              <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">${item.updateType}</span></td>
+              <td><span style="font-weight:600; color:#475569;">${item.dateSubmitted}</span></td>
+              <td><span style="background: rgba(255,255,255,0.7); color: #333; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">${item.updateType}</span></td>
           </tr>
-      `).join('');
+          `;
+      }).join('');
   }
 
-      // KOD BARU: Event listener yang lebih kuat untuk butang Select All (Tapisan Excel)
+  // PENYELESAIAN ERROR: Penutup ini tertinggal sebelum ini menyebabkan sistem crash
   document.addEventListener('change', (e) => {
       if (e.target.id === 'selectAllExcelRows') {
           document.querySelectorAll('.excel-row-check').forEach(cb => cb.checked = e.target.checked);
       }
+  }); // <--- PENUTUP YANG TERTINGGAL
 
   // SIMPAN KE BAKUL FIREBASE
   const btnSaveToBasket = document.getElementById('btnSaveToBasket');
@@ -9742,7 +9753,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               playSoundEffect('positive_chime.mp3');
               alert(`${batch.length} permohonan telah berjaya dimasukkan ke Bakul!`);
               checked.forEach(cb => cb.checked = false);
-              document.getElementById('selectAllExcelRows').checked = false;
+              const checkAllBox = document.getElementById('selectAllExcelRows');
+              if(checkAllBox) checkAllBox.checked = false;
               switchTab('tab-bakul');
           } catch(e) {
               console.error("Gagal simpan ke bakul:", e);
@@ -9822,7 +9834,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           });
   }
 
-  // KOD BARU: Event Delegation untuk butang di dalam Bakul (Penyelesaian Butang Tak Fungsi)
+  // KOD BARU: Event Delegation untuk butang di dalam Bakul (Supaya butang sentiasa berfungsi)
   const bakulTableBody = document.getElementById('bakulTableBody');
   if (bakulTableBody && !bakulTableBody.hasAttribute('data-listener-bakul')) {
       bakulTableBody.setAttribute('data-listener-bakul', 'true');
@@ -9883,7 +9895,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   r.checked = (r.value === radioVal);
               }
 
-              // Jika ada maklumat / gred ubah
               if(radioVal === 'ubah_maklumat') {
                   document.getElementById('input_ubah_maklumat').style.display = 'block';
                   document.getElementById('input_ubah_maklumat').value = type;
@@ -9893,7 +9904,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   document.getElementById('input_ubah_gred').value = type;
               }
 
-              // KOD BARU: Masukkan Tarikh Mohon
+              // KOD BARU: Masukkan Tarikh Mohon secara Autofill
               if (dateSubmitted && dateSubmitted !== '-') {
                   const parts = dateSubmitted.split('/');
                   if (parts.length === 3) {
@@ -9932,7 +9943,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
               // Bawa pengguna ke tab borang
               switchTab('stb');
-              alert("Maklumat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
+              alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
           }
       });
   }
