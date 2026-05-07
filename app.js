@@ -6380,6 +6380,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     if (currentUser.role === 'PENGESYOR') {
       tabsContainer.innerHTML = `
         <button class="tab-btn" data-target="dashboard"><span class="tab-icon">📊</span><span class="tab-text">Dashboard</span></button>
+        <button class="tab-btn" data-target="tab-tapisan"><span class="tab-icon">📄</span><span class="tab-text">Tapisan Excel</span></button>
+        <button class="tab-btn" data-target="tab-bakul"><span class="tab-icon">🛒</span><span class="tab-text">Bakul Permohonan</span></button>
         <button class="tab-btn" data-target="stb"><span class="tab-icon">✓</span><span class="tab-text">Borang Semakan</span></button>
         <button class="tab-btn" data-target="db"><span class="tab-icon">📂</span><span class="tab-text">Input Database</span></button>
         <button class="tab-btn" data-target="drafts"><span class="tab-icon">📋</span><span class="tab-text">Belum Hantar</span></button>
@@ -6393,11 +6395,9 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         nameField.readOnly = true;
       }
       
-      if(!activeTab || !['dashboard','stb','db','drafts','submitted', 'profile'].includes(activeTab)) {
+      // Kemas kini senarai tab yang dibenarkan
+      if(!activeTab || !['dashboard','tab-tapisan','tab-bakul','stb','db','drafts','submitted', 'profile'].includes(activeTab)) {
         activeTab = 'dashboard';
-      }
-      if(activeTab === 'pelulus-view' && !pelulusActiveItem) {
-        activeTab = 'submitted';
       }
 
       switchTab(activeTab);
@@ -6670,6 +6670,26 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         restoreActiveElement();
       }, 200);
     }
+    // =========================================================
+    // KOD BARU DITAMBAH DI SINI (UNTUK TAPISAN & BAKUL)
+    // =========================================================
+    else if (tabName === 'tab-tapisan' && currentUser.role === 'PENGESYOR') {
+      const tabTapisan = document.getElementById('tab-tapisan');
+      if (tabTapisan) {
+        tabTapisan.style.display = 'block';
+        tabTapisan.classList.add('active');
+      }
+    }
+    else if (tabName === 'tab-bakul' && currentUser.role === 'PENGESYOR') {
+      const tabBakul = document.getElementById('tab-bakul');
+      if (tabBakul) {
+        tabBakul.style.display = 'block';
+        tabBakul.classList.add('active');
+      }
+    }
+    // =========================================================
+    // TAMAT KOD BARU
+    // =========================================================
     else if (currentUser.role === 'PENGESYOR' || currentUser.role === 'ADMIN' || currentUser.role === 'PENGARAH' || currentUser.role === 'KETUA SEKSYEN') {
       if (tabName === 'stb' && (currentUser.role === 'PENGESYOR' || currentUser.role === 'ADMIN')) {
         const tabChecker = document.getElementById('tab-checker');
