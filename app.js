@@ -414,8 +414,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser = result.user;
         currentUser.role = result.user.role ? result.user.role.toUpperCase().trim() : "";
         
-        // Simpan sesi ke storage
-        await storageWrapper.set({ 'stb_session': currentUser });
+        // Simpan sesi dan tarikh hari ini ke storage
+        const todayStr = new Date().toDateString();
+        await storageWrapper.set({ 
+          'stb_session': currentUser,
+          'stb_login_date': todayStr
+        });
 
         // --- KOD PENYELAMAT: Tukar paparan di belakang tabir loading ---
         // Kita sorok skrin login & tunjuk skrin app SEKARANG (sementara loading masih flex)
@@ -4549,6 +4553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const storage = await storageWrapper.get([
         'stb_session', 
+        'stb_login_date',
         'stb_last_active_tab',
         'stb_last_active_element',
         'stb_form_states',
@@ -4581,8 +4586,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ]);
       
       if (storage.stb_session) {
-        currentUser = storage.stb_session;
-        setupUserUI(); 
+        const todayStr = new Date().toDateString();
+        // Semak jika hari sudah bertukar semasa baru buka sistem
+        if (storage.stb_login_date && storage.stb_login_date !== todayStr) {
+            console.log("V6.5.2 Sesi dibatalkan kerana pertukaran hari.");
+            // Guna .then untuk remove supaya tak block fungsi async
+            storageWrapper.remove(['stb_session', 'stb_login_date']).then(() => {
+                currentUser = null;
+            });
+        } else {
+            currentUser = storage.stb_session;
+            setupUserUI(); 
+        }
       }
       
       if (storage.stb_last_active_tab) {
@@ -6089,6 +6104,32 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => {
     document.addEventListener(evt, resetInactivityTimer, true);
   });
+  
+  // KOD BARU: Fungsi semak jika hari dah bertukar
+  async function checkDayChangeLogout() {
+    if (!currentUser) return false;
+    
+    const storage = await storageWrapper.get(['stb_login_date']);
+    const loginDate = storage.stb_login_date;
+    const todayStr = new Date().toDateString();
+    
+    if (loginDate && loginDate !== todayStr) {
+      alert("Sesi anda telah tamat tempoh kerana pertukaran hari. Sila log masuk semula demi keselamatan.");
+      
+      await storageWrapper.remove([
+        'stb_session', 'stb_login_date', 'stb_form_data', 'stb_pelulus_state', 'stb_last_active_tab',
+        'stb_last_active_element', 'stb_form_states', 'stb_search_state', 'stb_search_history_state',
+        'stb_has_printed', 'stb_drive_folder_url', 'stb_user_folder_url', 'stb_filter_pengesyor',
+        'stb_dashboard_data', 'stb_form_persistence', 'stb_database_persistence',
+        'stb_current_submitted_status_filter', 'stb_current_submitted_jenis_filter',
+        'stb_current_history_status_filter', 'stb_current_history_jenis_filter',
+        'stb_current_draft_filter', 'stb_music_playing', 'stb_bgm_volume', 'stb_sfx_volume'
+      ]);
+      location.reload();
+      return true;
+    }
+    return false;
+  }
 
   function setupUserUI() {
     if (!currentUser || !appContainer || !userBadge) return;
@@ -9019,8 +9060,15 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     }
   }, 1000);
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && currentUser && !isRestoring) {
+  document.addEventListener('visibilitychange', async () => {
+    // Jika pengguna kembali ke tab ini, semak jika hari dah bertukar
+    if (document.visibilityState === 'visible') {
+      if (currentUser) {
+        await checkDayChangeLogout();
+      }
+    } 
+    // Jika pengguna pergi ke tab lain, buat auto-save
+    else if (document.visibilityState === 'hidden' && currentUser && !isRestoring) {
       console.log('V6.5.2 Web App visibility hidden - melakukan auto-save terakhir');
       saveFormData();
       saveDatabaseFormData();
@@ -9221,6 +9269,44 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           </div>
       `;
   }
+  // =========================================================================
+  // FUNGSI JAM DIGITAL (WAKTU & HARI MALAYSIA)
+  // =========================================================================
+  function startDigitalClock() {
+      const clockEl = document.getElementById('digitalClock');
+      if (!clockEl) return;
+
+      const hariDalamBM = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
+
+      setInterval(() => {
+          const now = new Date();
+          
+          // Dapatkan Hari
+          const hari = hariDalamBM[now.getDay()];
+          
+          // Dapatkan Masa
+          let jam = now.getHours();
+          let minit = now.getMinutes();
+          let saat = now.getSeconds();
+          
+          // Tentukan AM / PM
+          const ampm = jam >= 12 ? 'PM' : 'AM';
+          
+          // Tukar Format 24-jam ke 12-jam
+          jam = jam % 12;
+          jam = jam ? jam : 12; // Jika jam 0, jadikan ia 12
+          
+          // Tambah '0' di depan jika nombor kurang dari 10
+          minit = minit < 10 ? '0' + minit : minit;
+          saat = saat < 10 ? '0' + saat : saat;
+          
+          // Paparkan ke skrin
+          clockEl.innerHTML = `🗓️ ${hari} <span style="color:#cbd5e1;">|</span> ⏱️ ${jam}:${minit}:${saat} ${ampm}`;
+      }, 1000); // Bergerak setiap 1 saat (1000ms)
+  }
+
+  // Mulakan jam sebaik sahaja sistem dimuatkan
+  startDigitalClock();
 
 });
 
