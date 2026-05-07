@@ -9270,19 +9270,23 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       `;
   }
   // =========================================================================
-  // FUNGSI JAM DIGITAL (WAKTU & HARI MALAYSIA)
+  // FUNGSI JAM DIGITAL (WAKTU & HARI & TARIKH MALAYSIA)
   // =========================================================================
   function startDigitalClock() {
       const clockEl = document.getElementById('digitalClock');
       if (!clockEl) return;
 
       const hariDalamBM = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
+      const bulanDalamBM = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'];
 
       setInterval(() => {
           const now = new Date();
           
-          // Dapatkan Hari
+          // Dapatkan Hari & Tarikh
           const hari = hariDalamBM[now.getDay()];
+          const tarikh = now.getDate();
+          const bulan = bulanDalamBM[now.getMonth()];
+          const tahun = now.getFullYear();
           
           // Dapatkan Masa
           let jam = now.getHours();
@@ -9300,9 +9304,9 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           minit = minit < 10 ? '0' + minit : minit;
           saat = saat < 10 ? '0' + saat : saat;
           
-          // Paparkan ke skrin
-          clockEl.innerHTML = `🗓️ ${hari} <span style="color:#cbd5e1;">|</span> ⏱️ ${jam}:${minit}:${saat} ${ampm}`;
-      }, 1000); // Bergerak setiap 1 saat (1000ms)
+          // Paparkan ke skrin (Hari, Tarikh Bulan Tahun | Masa AM/PM)
+          clockEl.innerHTML = `🗓️ ${hari}, ${tarikh} ${bulan} ${tahun} <span style="color:#cbd5e1; margin: 0 6px;">|</span> ⏱️ ${jam}:${minit}:${saat} ${ampm}`;
+      }, 1000); // Bergerak setiap 1 saat
   }
 
   // Mulakan jam sebaik sahaja sistem dimuatkan
