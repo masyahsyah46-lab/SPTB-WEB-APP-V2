@@ -3,6 +3,39 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log("STB Web App V6.5.2 Loaded - Auto Email Auth, Separated History Search, Dynamic Routing, Anonymous Access, Mobile Menu, Pemutihan Email & Ketua Seksyen Fixes, GIS Integration");
+  
+  // =========================================================================
+  // FIREBASE CONFIG (UNTUK TAPISAN & BAKUL SAHAJA)
+  // =========================================================================
+  const firebaseConfig = {
+      apiKey: "AIzaSyCiRTUSrEm7mxZ4Hzfb2iT3QevF9tZm6xA",
+      authDomain: "tapisan-stb-g4-g7.firebaseapp.com",
+      projectId: "tapisan-stb-g4-g7",
+      storageBucket: "tapisan-stb-g4-g7.firebasestorage.app",
+      messagingSenderId: "471944484216",
+      appId: "1:471944484216:web:444b36f32ef52143c4a48d"
+  };
+  
+  if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+  }
+  const dbFirestore = firebase.firestore();
+  const authFirebase = firebase.auth();
+
+  // Peta Emel ke Kod Rahsia Firebase
+  const pengesyorFirebaseMap = {
+      'zariff.zainudin@kuskop.gov.my': '0707',
+      'ilyanadia.azmi@kuskop.gov.my': '6166',
+      'norhamizi.hamdzah@kuskop.gov.my': '5757',
+      'khairulfitri.kamaruddin@kuskop.gov.my': '5381'
+  };
+
+  let currentUserFirebaseCode = null;
+  let firebaseUserRules = null; 
+  let excelRawData = [];
+  let allExcelDistricts = [];
+  let selectedExcelDistricts = new Set();
+  let bakulUnsubscribe = null;
 
   // URL APPSCRIPT
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPlE0FrXQ5H4i99ozCJDDCae2oo5j-ozovo3LMv4PymiLs6s8P9dZkuGPrRxBeSuh7/exec';
@@ -367,95 +400,112 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Fungsi pengendali respons credential Google
-  async function handleCredentialResponse(response) {
-    console.log("V6.5.2 Google credential response received");
+async function handleCredentialResponse(response) {
+  console.log("V6.5.2 Google credential response received");
+  
+  // 1. Sembunyi butang Google & ralat (jika ada)
+  const googleButton = document.getElementById('googleButton');
+  if (googleButton) {
+    googleButton.style.display = 'none';
+  }
+  
+  if (loginError) {
+    loginError.style.display = 'none';
+    loginError.textContent = '';
+  }
+  
+  // 2. MULA PAPARKAN LOADING PROGRESS BAR (0-100%)
+  simulateLoadingWithSteps(
+    [
+      'Mengesahkan token Google...',
+      'Mengekstrak maklumat e-mel...',
+      'Menyemak pangkalan data...',
+      'Mengesahkan peranan pengguna...',
+      'Menyediakan sistem...',
+      'Log masuk berjaya!'
+    ],
+    'Proses Log Masuk'
+  );
+  
+  try {
+    // Decode JWT token untuk dapatkan email
+    const decodedToken = decodeJwtResponse(response.credential);
     
-    // 1. Sembunyi butang Google & ralat (jika ada)
-    const googleButton = document.getElementById('googleButton');
-    if (googleButton) {
-      googleButton.style.display = 'none';
+    if (!decodedToken || !decodedToken.email) {
+      throw new Error('Token Google tidak sah atau tiada e-mel.');
     }
     
-    if (loginError) {
-      loginError.style.display = 'none';
-      loginError.textContent = '';
-    }
+    const userEmail = decodedToken.email;
+    console.log("V6.5.2 Email extracted from Google token:", userEmail);
     
-    // 2. MULA PAPARKAN LOADING PROGRESS BAR (0-100%)
-    simulateLoadingWithSteps(
-      [
-        'Mengesahkan token Google...',
-        'Mengekstrak maklumat e-mel...',
-        'Menyemak pangkalan data...',
-        'Mengesahkan peranan pengguna...',
-        'Menyediakan sistem...',
-        'Log masuk berjaya!'
-      ],
-      'Proses Log Masuk'
-    );
+    // Hantar email ke backend GAS untuk pengesahan
+    const result = await verifyEmailWithBackend(userEmail);
     
-    try {
-      // Decode JWT token untuk dapatkan email
-      const decodedToken = decodeJwtResponse(response.credential);
+    if (result.authenticated && result.user) {
+      console.log("V6.5.2 GIS Authentication successful for:", result.user.email);
       
-      if (!decodedToken || !decodedToken.email) {
-        throw new Error('Token Google tidak sah atau tiada e-mel.');
-      }
+      currentUser = result.user;
+      currentUser.role = result.user.role ? result.user.role.toUpperCase().trim() : "";
       
-      const userEmail = decodedToken.email;
-      console.log("V6.5.2 Email extracted from Google token:", userEmail);
-      
-      // Hantar email ke backend GAS untuk pengesahan
-      const result = await verifyEmailWithBackend(userEmail);
-      
-      if (result.authenticated && result.user) {
-        console.log("V6.5.2 GIS Authentication successful for:", result.user.email);
-        
-        currentUser = result.user;
-        currentUser.role = result.user.role ? result.user.role.toUpperCase().trim() : "";
-        
-        // Simpan sesi dan tarikh hari ini ke storage
-        const todayStr = new Date().toDateString();
-        await storageWrapper.set({ 
-          'stb_session': currentUser,
-          'stb_login_date': todayStr
-        });
+      // KOD BARU: Simpan emel dalam objek currentUser
+      currentUser.email = userEmail.toLowerCase();
 
-        // --- KOD PENYELAMAT: Tukar paparan di belakang tabir loading ---
-        // Kita sorok skrin login & tunjuk skrin app SEKARANG (sementara loading masih flex)
-        if (loginScreen) loginScreen.style.display = 'none';
-        if (appContainer) appContainer.style.display = 'block';
-        
-        // Update maklumat profil pengguna
-        if (userBadge) {
-          userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
-          const themeColor = getUserColorHex(currentUser.color);
-          document.documentElement.style.setProperty('--theme-color', themeColor);
-        }
-
-        // Biarkan bar peratusan berjalan sehingga tamat untuk "User Experience" yang premium
-        setTimeout(() => {
-          hideLoading(); 
-          // Jalankan fungsi initialize app selepas loading hilang
-          setupUserUI(); 
-        }, 1500); 
-        
-      } else {
-        // Jika emel salah/tidak berdaftar, barulah panggil error
-        hideLoading();
-        const errorMsg = result.message || 'Akses Ditolak: E-mel tidak didaftarkan dalam sistem.';
-        handleAuthError(errorMsg);
+      // KOD BARU: Sambungkan ke Firebase Bakul jika peranan adalah PENGESYOR
+      if (currentUser.role === 'PENGESYOR') {
+          currentUserFirebaseCode = pengesyorFirebaseMap[currentUser.email];
+          if (currentUserFirebaseCode) {
+              console.log("Menyambung ke Firebase Bakul dengan kod:", currentUserFirebaseCode);
+              authFirebase.signInAnonymously().then(() => {
+                  dbFirestore.collection("users").doc(currentUserFirebaseCode).get().then(doc => {
+                      if (doc.exists) {
+                          firebaseUserRules = doc.data();
+                          console.log("Peraturan Tapisan Firebase dimuatkan.");
+                          subscribeToBakulFirebase();
+                      }
+                  });
+              }).catch(err => console.error("Ralat Firebase Auth:", err));
+          }
       }
-     
-    } catch (error) {
-      console.error("V6.5.2 GIS Authentication error:", error);
+
+      // Simpan sesi dan tarikh hari ini ke storage
+      const todayStr = new Date().toDateString();
+      await storageWrapper.set({ 
+        'stb_session': currentUser,
+        'stb_login_date': todayStr
+      });
+
+      // --- KOD PENYELAMAT: Tukar paparan di belakang tabir loading ---
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appContainer) appContainer.style.display = 'block';
       
-      hideLoading(); // Tutup progress bar
+      // Update maklumat profil pengguna
+      if (userBadge) {
+        userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
+        const themeColor = getUserColorHex(currentUser.color);
+        document.documentElement.style.setProperty('--theme-color', themeColor);
+      }
+
+      // Biarkan bar peratusan berjalan sehingga tamat untuk "User Experience" yang premium
+      setTimeout(() => {
+        hideLoading(); 
+        // Jalankan fungsi initialize app selepas loading hilang
+        setupUserUI(); 
+      }, 1500); 
       
-      const errorMsg = `Ralat Pengesahan: ${error.message}. Sila cuba lagi.`;
+    } else {
+      // Jika emel salah/tidak berdaftar, barulah panggil error
+      hideLoading();
+      const errorMsg = result.message || 'Akses Ditolak: E-mel tidak didaftarkan dalam sistem.';
       handleAuthError(errorMsg);
     }
+   
+  } catch (error) {
+    console.error("V6.5.2 GIS Authentication error:", error);
+    hideLoading(); // Tutup progress bar
+    const errorMsg = `Ralat Pengesahan: ${error.message}. Sila cuba lagi.`;
+    handleAuthError(errorMsg);
   }
+}
   
   // Fungsi untuk menghantar email ke backend
   async function verifyEmailWithBackend(email) {
@@ -4689,19 +4739,33 @@ document.addEventListener('DOMContentLoaded', () => {
       ]);
       
       if (storage.stb_session) {
-        const todayStr = new Date().toDateString();
-        // Semak jika hari sudah bertukar semasa baru buka sistem
-        if (storage.stb_login_date && storage.stb_login_date !== todayStr) {
-            console.log("V6.5.2 Sesi dibatalkan kerana pertukaran hari.");
-            // Guna .then untuk remove supaya tak block fungsi async
-            storageWrapper.remove(['stb_session', 'stb_login_date']).then(() => {
-                currentUser = null;
-            });
-        } else {
-            currentUser = storage.stb_session;
-            setupUserUI(); 
-        }
+  const todayStr = new Date().toDateString();
+  if (storage.stb_login_date && storage.stb_login_date !== todayStr) {
+      console.log("V6.5.2 Sesi dibatalkan kerana pertukaran hari.");
+      storageWrapper.remove(['stb_session', 'stb_login_date']).then(() => {
+          currentUser = null;
+      });
+  } else {
+      currentUser = storage.stb_session;
+
+      // KOD BARU: Sambungkan semula ke Firebase Bakul secara automatik jika Pengesyor
+      if (currentUser && currentUser.role === 'PENGESYOR' && currentUser.email) {
+          currentUserFirebaseCode = pengesyorFirebaseMap[currentUser.email];
+          if (currentUserFirebaseCode) {
+              authFirebase.signInAnonymously().then(() => {
+                  dbFirestore.collection("users").doc(currentUserFirebaseCode).get().then(doc => {
+                      if (doc.exists) {
+                          firebaseUserRules = doc.data();
+                          subscribeToBakulFirebase();
+                      }
+                  });
+              });
+          }
       }
+
+      setupUserUI(); 
+  }
+}
       
       if (storage.stb_last_active_tab) {
         lastActiveTab = storage.stb_last_active_tab;
@@ -9430,6 +9494,371 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   
   // Panggil sekali sewaktu sistem mula dibuka
   setTimeout(applyDynamicFormColors, 500);
+  // =========================================================================
+  // LOGIK TAPISAN EXCEL & BAKUL PERMOHONAN (PENGESYOR)
+  // =========================================================================
+
+  const excelFileInput = document.getElementById('excelFileInput');
+  if (excelFileInput) {
+      excelFileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          document.getElementById('excelFileName').innerText = file.name;
+          
+          simulateLoadingWithSteps(['Membaca fail Excel...', 'Menapis data berdasarkan ketetapan anda...'], 'Sila Tunggu');
+          
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+              try {
+                  const data = new Uint8Array(evt.target.result);
+                  const workbook = XLSX.read(data, { type: 'array' });
+                  const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                  processExcelForTapisan(jsonData);
+              } catch (error) {
+                  alert("Ralat membaca fail Excel. Pastikan ia format .xlsx yang betul.");
+              } finally {
+                  hideLoading();
+              }
+          };
+          reader.readAsArrayBuffer(file);
+      });
+  }
+
+  function processExcelForTapisan(rawData) {
+      if (rawData.length < 2) return;
+      const headers = rawData[0].map(h => String(h).toLowerCase().trim());
+      const keys = {
+          company: headers.findIndex(h => h.includes('syarikat') || h.includes('company') || h.includes('nama')),
+          grade: headers.findIndex(h => h.includes('gred') || h.includes('grade')),
+          cidb: headers.findIndex(h => h.includes('cidb') || h.includes('reg') || h.includes('pendaftar')),
+          district: headers.findIndex(h => h.includes('daerah') || h.includes('district') || h.includes('negeri')),
+          date: headers.findIndex(h => h.includes('tarikh') || h.includes('date') || h.includes('submitted')),
+          updateType: headers.findIndex(h => h.includes('update') || h.includes('type') || h.includes('kategori'))
+      };
+
+      if (keys.company === -1 || keys.grade === -1 || keys.cidb === -1) {
+          alert("Format Excel tidak sah. Mesti ada kolum Syarikat, Gred, dan CIDB.");
+          return;
+      }
+
+      const gradeRegex = /^G[4-7]/i;
+      const numberMap = {'0':'K', '1':'S', '2':'D', '3':'T', '4':'E', '5':'L', '6':'E', '7':'T', '8':'L', '9':'S'};
+
+      excelRawData = rawData.slice(1).filter(row => {
+          const g = String(row[keys.grade] || '').trim();
+          if (!gradeRegex.test(g)) return false; // Hanya G4-G7
+          
+          // Tapisan ketat mengikut Profil Firebase Pengesyor
+          if (firebaseUserRules && firebaseUserRules.cidbEndsWith && firebaseUserRules.cidbEndsWith.length > 0) {
+              const cidbStr = String(row[keys.cidb] || '').trim();
+              const lastDigit = cidbStr.slice(-1);
+              if (!firebaseUserRules.cidbEndsWith.includes(lastDigit)) return false;
+              
+              if (firebaseUserRules.alphaSplit && firebaseUserRules.alphaSplit[lastDigit]) {
+                  const [start, end] = firebaseUserRules.alphaSplit[lastDigit].split('-');
+                  let first = String(row[keys.company] || '').trim().toUpperCase().charAt(0);
+                  if (/[0-9]/.test(first)) first = numberMap[first] || first;
+                  if (first < start || first > end) return false;
+              }
+          }
+          return true;
+      }).map((row, idx) => {
+          let dateStr = '-';
+          let rawSortDate = new Date(1970, 0, 1);
+          if (row[keys.date]) {
+              if (typeof row[keys.date] === 'number') {
+                  rawSortDate = new Date(Math.round((row[keys.date] - 25569) * 86400 * 1000));
+                  dateStr = rawSortDate.toLocaleDateString('en-GB');
+              } else {
+                  dateStr = String(row[keys.date]);
+                  const parts = dateStr.split('/');
+                  if(parts.length === 3) rawSortDate = new Date(parts[2], parts[1]-1, parts[0]);
+              }
+          }
+          return {
+              id: idx,
+              company: String(row[keys.company] || '-').trim().toUpperCase(),
+              cidb: String(row[keys.cidb] || '-').trim(),
+              district: keys.district !== -1 ? String(row[keys.district] || '-').trim().toUpperCase() : '-',
+              grade: String(row[keys.grade] || '-').trim().toUpperCase(),
+              dateSubmitted: dateStr,
+              rawSortDate: rawSortDate,
+              updateType: keys.updateType !== -1 && row[keys.updateType] ? String(row[keys.updateType]).trim() : '-'
+          };
+      });
+
+      allExcelDistricts = [...new Set(excelRawData.map(d => d.district))].filter(d => d && d !== '-').sort();
+      selectedExcelDistricts = new Set(allExcelDistricts);
+      
+      renderExcelDistrictButtons();
+      renderExcelTable();
+      
+      document.getElementById('districtFilterContainer').style.display = 'block';
+      document.getElementById('excelResultsContainer').style.display = 'block';
+  }
+
+  function renderExcelDistrictButtons() {
+      const container = document.getElementById('districtGrid');
+      if(!container) return;
+      container.innerHTML = '';
+      allExcelDistricts.forEach(d => {
+          const isActive = selectedExcelDistricts.has(d);
+          const btn = document.createElement('button');
+          // Gunakan gaya asas dari Tailwind tapi diubah kepada inline css utk sistem ni
+          btn.style.padding = '8px 15px';
+          btn.style.borderRadius = '6px';
+          btn.style.fontWeight = 'bold';
+          btn.style.border = 'none';
+          btn.style.cursor = 'pointer';
+          if(isActive) {
+              btn.style.backgroundColor = '#f97316';
+              btn.style.color = 'white';
+          } else {
+              btn.style.backgroundColor = '#e2e8f0';
+              btn.style.color = '#475569';
+          }
+          btn.innerText = d;
+          btn.onclick = () => {
+              if (selectedExcelDistricts.has(d)) selectedExcelDistricts.delete(d);
+              else selectedExcelDistricts.add(d);
+              renderExcelDistrictButtons();
+              renderExcelTable();
+          };
+          container.appendChild(btn);
+      });
+  }
+
+  const btnSelectAllDistricts = document.getElementById('btnSelectAllDistricts');
+  if(btnSelectAllDistricts){
+    btnSelectAllDistricts.addEventListener('click', () => {
+        if (selectedExcelDistricts.size === allExcelDistricts.length) {
+            selectedExcelDistricts.clear();
+            btnSelectAllDistricts.innerText = "Pilih Semua";
+        } else {
+            selectedExcelDistricts = new Set(allExcelDistricts);
+            btnSelectAllDistricts.innerText = "✓ Kosongkan";
+        }
+        renderExcelDistrictButtons();
+        renderExcelTable();
+    });
+  }
+
+  function renderExcelTable() {
+      const tbody = document.getElementById('excelTableBody');
+      const filtered = excelRawData.filter(d => selectedExcelDistricts.has(d.district));
+      document.getElementById('excelRowCount').innerText = filtered.length;
+      
+      tbody.innerHTML = filtered.map(item => `
+          <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+              <td style="text-align:center;"><input type="checkbox" class="excel-row-check" value="${item.id}" style="transform: scale(1.2);"></td>
+              <td style="font-weight:bold; color: #1e293b;">${item.company}</td>
+              <td style="color: #475569;">${item.cidb}</td>
+              <td>${item.district}</td>
+              <td style="font-weight:bold; color: #f59e0b;">${item.grade}</td>
+              <td>${item.dateSubmitted}</td>
+              <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">${item.updateType}</span></td>
+          </tr>
+      `).join('');
+  }
+
+  const selectAllExcelRows = document.getElementById('selectAllExcelRows');
+  if(selectAllExcelRows) {
+    selectAllExcelRows.addEventListener('change', (e) => {
+        document.querySelectorAll('.excel-row-check').forEach(cb => cb.checked = e.target.checked);
+    });
+  }
+
+  // SIMPAN KE BAKUL FIREBASE
+  const btnSaveToBasket = document.getElementById('btnSaveToBasket');
+  if (btnSaveToBasket) {
+      btnSaveToBasket.addEventListener('click', async () => {
+          if (!currentUserFirebaseCode) {
+              alert("Akaun anda tiada kod tapisan dikesan. Anda tidak boleh menyimpan ke bakul.");
+              return;
+          }
+          const checked = document.querySelectorAll('.excel-row-check:checked');
+          if (checked.length === 0) {
+              alert("Sila tick kotak permohonan yang ingin disimpan terlebih dahulu.");
+              return;
+          }
+          
+          btnSaveToBasket.innerText = "Menyimpan...";
+          btnSaveToBasket.disabled = true;
+
+          const idMap = new Map(excelRawData.map(i => [i.id, i]));
+          const batch = [];
+          
+          checked.forEach(cb => {
+              const item = idMap.get(parseInt(cb.value));
+              if(item) {
+                  let typeToSave = item.updateType !== '-' ? item.updateType : "BARU";
+                  
+                  batch.push(dbFirestore.collection("applications").add({
+                      company: item.company,
+                      cidb: item.cidb,
+                      grade: item.grade,
+                      district: item.district,
+                      type: typeToSave,
+                      dateSubmitted: item.dateSubmitted,
+                      sortableDate: firebase.firestore.Timestamp.fromDate(item.rawSortDate),
+                      status: 'Pending',
+                      processedBy: currentUserFirebaseCode,
+                      processorName: currentUser.name,
+                      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                      addedToBasketAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  }));
+              }
+          });
+
+          try {
+              await Promise.all(batch);
+              playSoundEffect('positive_chime.mp3');
+              alert(`${batch.length} permohonan telah berjaya dimasukkan ke Bakul!`);
+              checked.forEach(cb => cb.checked = false);
+              document.getElementById('selectAllExcelRows').checked = false;
+              switchTab('tab-bakul');
+          } catch(e) {
+              console.error("Gagal simpan ke bakul:", e);
+              playSoundEffect('error_buzz.mp3');
+              alert("Ralat sistem. Gagal menyimpan ke bakul Firebase.");
+          } finally {
+              btnSaveToBasket.innerText = "🛒 Simpan Ke Bakul";
+              btnSaveToBasket.disabled = false;
+          }
+      });
+  }
+
+  // FUNGSI BAKUL & FIREBASE LISTENER
+  function subscribeToBakulFirebase() {
+      if (bakulUnsubscribe) bakulUnsubscribe();
+      
+      bakulUnsubscribe = dbFirestore.collection("applications")
+          .where("processedBy", "==", currentUserFirebaseCode)
+          .where("status", "==", "Pending")
+          .onSnapshot((snap) => {
+              const bakulData = [];
+              snap.forEach(doc => {
+                  bakulData.push({ id: doc.id, ...doc.data() });
+              });
+              
+              // Susun terbaharu di atas
+              bakulData.sort((a, b) => {
+                  const timeA = a.addedToBasketAt ? a.addedToBasketAt.seconds : 0;
+                  const timeB = b.addedToBasketAt ? b.addedToBasketAt.seconds : 0;
+                  return timeB - timeA;
+              });
+
+              document.getElementById('bakulCountBadge').innerText = bakulData.length;
+              
+              const tbody = document.getElementById('bakulTableBody');
+              if(bakulData.length === 0) {
+                  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color:#94a3b8; font-style: italic;">Bakul Kosong. Sila tapis dan tambah dari Tapisan Excel.</td></tr>`;
+              } else {
+                  tbody.innerHTML = bakulData.map(d => `
+                      <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+                          <td style="font-weight:bold; color: #1e3a8a; font-size: 1.05rem;">${d.company}</td>
+                          <td>
+                              <span style="font-weight:bold; color: #f59e0b;">${d.grade}</span> <br>
+                              <span style="font-size:0.85rem; color:#64748b; font-family: monospace;">${d.cidb}</span>
+                          </td>
+                          <td>${d.district}</td>
+                          <td><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid #cbd5e1;">${d.type}</span></td>
+                          <td>
+                              <div style="display: flex; gap: 8px;">
+                                  <button class="btn btn-blue" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; flex: 1;" onclick="prosesPermohonanBakul('${d.id}', '${d.company.replace(/'/g, "\\'")}', '${d.cidb}', '${d.grade}', '${d.type.replace(/'/g, "\\'")}')">▶ Proses Form</button>
+                                  <button class="btn btn-delete" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; background: #ef4444;" onclick="padamDariBakul('${d.id}')">🗑️</button>
+                              </div>
+                          </td>
+                      </tr>
+                  `).join('');
+              }
+          });
+  }
+
+  window.padamDariBakul = async (docId) => {
+      playSoundEffect('ui_click.mp3');
+      if(confirm("Adakah anda pasti mahu memadam permohonan ini dari bakul? Ia akan dipadam selamanya.")) {
+          try {
+              await dbFirestore.collection("applications").doc(docId).delete();
+              playSoundEffect('positive_chime.mp3');
+          } catch(e) {
+              console.error("Gagal padam:", e);
+              playSoundEffect('error_buzz.mp3');
+              alert("Gagal memadam dari bakul.");
+          }
+      }
+  };
+
+  window.prosesPermohonanBakul = async (docId, company, cidb, grade, type) => {
+      playSoundEffect('ui_click.mp3');
+      const hasUnsaved = checkUnsavedData();
+      if (hasUnsaved) {
+          if (!confirm("Borang semakan anda sekarang mempunyai data. Anda pasti mahu overwrite (timpa) borang ini?")) {
+              return;
+          }
+          await resetFormForEdit();
+      }
+
+      // 1. Set Borang Semakan (Tab Checker)
+      document.getElementById('borang_syarikat').value = company;
+      document.getElementById('borang_cidb').value = cidb;
+      const gredSelect = document.getElementById('borang_gred');
+      if(gredSelect) {
+          for(let i=0; i<gredSelect.options.length; i++) {
+              if(gredSelect.options[i].value === grade.toUpperCase()) gredSelect.selectedIndex = i;
+          }
+      }
+      
+      // Auto-Pilih Radio Button (Jenis Permohonan)
+      const tLower = type.toLowerCase();
+      let radioVal = 'baru';
+      if(tLower.includes('pembaharuan') || tLower.includes('renewal')) radioVal = 'pembaharuan';
+      else if(tLower.includes('maklumat') || tLower.includes('info')) radioVal = 'ubah_maklumat';
+      else if(tLower.includes('gred') || tLower.includes('grade')) radioVal = 'ubah_gred';
+      
+      const radios = document.getElementsByName('jenisApp');
+      for(let r of radios) {
+          r.checked = (r.value === radioVal);
+      }
+
+      // Jika ada maklumat / gred ubah: letakkan teks asal ke input conditional
+      if(radioVal === 'ubah_maklumat') {
+          document.getElementById('input_ubah_maklumat').style.display = 'block';
+          document.getElementById('input_ubah_maklumat').value = type;
+      }
+      if(radioVal === 'ubah_gred') {
+          document.getElementById('input_ubah_gred').style.display = 'block';
+          document.getElementById('input_ubah_gred').value = type;
+      }
+
+      // 2. Set Database Form
+      document.getElementById('db_syarikat').value = company;
+      document.getElementById('db_cidb').value = cidb;
+      const dbGredSelect = document.getElementById('db_gred');
+      if(dbGredSelect) {
+          for(let i=0; i<dbGredSelect.options.length; i++) {
+              if(dbGredSelect.options[i].value === grade.toUpperCase()) dbGredSelect.selectedIndex = i;
+          }
+      }
+
+      // 3. Mark Firebase as 'Processed' supaya hilang dari bakul
+      try {
+          await dbFirestore.collection("applications").doc(docId).update({
+              status: 'Processed',
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+      } catch(e) {
+          console.error("Gagal update status bakul:", e);
+      }
+
+      // Save Data to WebApp memory
+      saveFormData();
+      saveDatabaseFormData();
+
+      // Bawa pengguna ke tab borang
+      switchTab('stb');
+      alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
+  };
 
 });
 
