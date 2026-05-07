@@ -16,11 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
       appId: "1:471944484216:web:444b36f32ef52143c4a48d"
   };
   
-  if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+  let dbFirestore = null;
+  let authFirebase = null;
+
+  // Safety Check: Pastikan Firebase telah dimuat turun sebelum di-init
+  if (typeof firebase !== 'undefined') {
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      dbFirestore = firebase.firestore();
+      authFirebase = firebase.auth();
+  } else {
+      console.error("Sistem Gagal Memuatkan Firebase. Sila semak fail index.html (CSP).");
   }
-  const dbFirestore = firebase.firestore();
-  const authFirebase = firebase.auth();
 
   // Peta Emel ke Kod Rahsia Firebase
   const pengesyorFirebaseMap = {
