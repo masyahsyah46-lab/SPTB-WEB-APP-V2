@@ -9567,13 +9567,15 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   function processExcelForTapisan(rawData) {
       if (rawData.length < 2) return;
       const headers = rawData[0].map(h => String(h).toLowerCase().trim());
+      
+      // KEMASKINI: Tambah 'disctrict' dan 'category' pada carian tajuk (header)
       const keys = {
           company: headers.findIndex(h => h.includes('syarikat') || h.includes('company') || h.includes('nama')),
           grade: headers.findIndex(h => h.includes('gred') || h.includes('grade')),
           cidb: headers.findIndex(h => h.includes('cidb') || h.includes('reg') || h.includes('pendaftar')),
-          district: headers.findIndex(h => h.includes('daerah') || h.includes('district') || h.includes('negeri')),
+          district: headers.findIndex(h => h.includes('daerah') || h.includes('district') || h.includes('negeri') || h.includes('disctrict')),
           date: headers.findIndex(h => h.includes('tarikh') || h.includes('date') || h.includes('submitted')),
-          updateType: headers.findIndex(h => h.includes('update') || h.includes('type') || h.includes('kategori'))
+          updateType: headers.findIndex(h => h.includes('update') || h.includes('type') || h.includes('kategori') || h.includes('category'))
       };
 
       if (keys.company === -1 || keys.grade === -1 || keys.cidb === -1) {
