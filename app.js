@@ -9543,6 +9543,14 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   document.addEventListener('change', (e) => {
       // UPLOAD EXCEL
       if (e.target.id === 'excelFileInput') {
+          
+          // KEMASKINI 1: Sekat upload jika data tapisan (rules) belum siap di-load dari Firebase
+          if (currentUser && currentUser.role === 'PENGESYOR' && !firebaseUserRules) {
+              alert("⏳ Sistem sedang mendapatkan peraturan tapisan peribadi anda. Sila tunggu 2-3 saat dan klik 'Pilih Fail Excel' sekali lagi.");
+              e.target.value = ''; 
+              return;
+          }
+
           const file = e.target.files[0];
           if (!file) return;
           
@@ -9599,11 +9607,21 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           const g = String(row[keys.grade] || '').trim();
           if (!gradeRegex.test(g)) return false; 
           
-          if (firebaseUserRules && firebaseUserRules.cidbEndsWith && firebaseUserRules.cidbEndsWith.length > 0) {
+          // KEMASKINI 2: LOGIK SANGAT KETAT UNTUK PENGESYOR
+          if (currentUser && currentUser.role === 'PENGESYOR') {
+              
+              // Jika tiada peraturan dikesan langsung untuk pengesyor ini, HALANG SEMUA
+              if (!firebaseUserRules || !firebaseUserRules.cidbEndsWith || firebaseUserRules.cidbEndsWith.length === 0) {
+                  return false; 
+              }
+
               const cidbStr = String(row[keys.cidb] || '').trim();
               const lastDigit = cidbStr.slice(-1);
+              
+              // Tapisan 1: Hujung nombor CIDB
               if (!firebaseUserRules.cidbEndsWith.includes(lastDigit)) return false;
               
+              // Tapisan 2: Huruf abjad pertama (Alpha split)
               if (firebaseUserRules.alphaSplit && firebaseUserRules.alphaSplit[lastDigit]) {
                   const [start, end] = firebaseUserRules.alphaSplit[lastDigit].split('-');
                   let first = String(row[keys.company] || '').trim().toUpperCase().charAt(0);
@@ -9611,7 +9629,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   if (first < start || first > end) return false;
               }
           }
-          return true;
+          
+          // Lulus hanya jika syarat di atas dipenuhi (Atau jika user adalah Admin)
+          return true; 
+          
       }).map((row, idx) => {
           let dateStr = '-';
           let rawSortDate = new Date(1970, 0, 1);
@@ -9651,22 +9672,41 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const container = document.getElementById('districtGrid');
       if(!container) return;
       container.innerHTML = '';
+      
       allExcelDistricts.forEach(d => {
           const isActive = selectedExcelDistricts.has(d);
           const btn = document.createElement('button');
-          btn.style.padding = '8px 15px';
-          btn.style.borderRadius = '6px';
+          
+          // KEMASKINI 1: Besarkan sikit saiz butang (padding dan font-size)
+          btn.style.padding = '10px 20px'; 
+          btn.style.borderRadius = '8px';
           btn.style.fontWeight = 'bold';
+          btn.style.fontSize = '0.95rem';
           btn.style.border = 'none';
           btn.style.cursor = 'pointer';
+          btn.style.transition = 'all 0.2s ease';
+          
           if(isActive) {
-              btn.style.backgroundColor = '#f97316';
+              // KEMASKINI 2: Gunakan warna tema pengesyor (--theme-color) berbanding warna oren tetap
+              btn.style.backgroundColor = 'var(--theme-color)';
               btn.style.color = 'white';
+              btn.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'; // Timbul sikit bila aktif
           } else {
               btn.style.backgroundColor = '#e2e8f0';
               btn.style.color = '#475569';
+              btn.style.boxShadow = 'none';
           }
+          
           btn.innerText = d;
+          
+          // Efek hover supaya nampak lebih interaktif
+          btn.onmouseover = () => {
+              if (!isActive) btn.style.backgroundColor = '#cbd5e1';
+          };
+          btn.onmouseout = () => {
+              if (!isActive) btn.style.backgroundColor = '#e2e8f0';
+          };
+
           btn.onclick = () => {
               if (selectedExcelDistricts.has(d)) selectedExcelDistricts.delete(d);
               else selectedExcelDistricts.add(d);
