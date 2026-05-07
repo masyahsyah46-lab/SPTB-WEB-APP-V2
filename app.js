@@ -9651,41 +9651,22 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const container = document.getElementById('districtGrid');
       if(!container) return;
       container.innerHTML = '';
-      
       allExcelDistricts.forEach(d => {
           const isActive = selectedExcelDistricts.has(d);
           const btn = document.createElement('button');
-          
-          // KEMASKINI 1: Besarkan sikit saiz butang (padding dan font-size)
-          btn.style.padding = '10px 20px'; 
-          btn.style.borderRadius = '8px';
+          btn.style.padding = '8px 15px';
+          btn.style.borderRadius = '6px';
           btn.style.fontWeight = 'bold';
-          btn.style.fontSize = '0.95rem';
           btn.style.border = 'none';
           btn.style.cursor = 'pointer';
-          btn.style.transition = 'all 0.2s ease';
-          
           if(isActive) {
-              // KEMASKINI 2: Gunakan warna tema pengesyor (--theme-color) berbanding warna oren tetap
-              btn.style.backgroundColor = 'var(--theme-color)';
+              btn.style.backgroundColor = '#f97316';
               btn.style.color = 'white';
-              btn.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'; // Timbul sikit bila aktif
           } else {
               btn.style.backgroundColor = '#e2e8f0';
               btn.style.color = '#475569';
-              btn.style.boxShadow = 'none';
           }
-          
           btn.innerText = d;
-          
-          // Efek hover supaya nampak lebih interaktif
-          btn.onmouseover = () => {
-              if (!isActive) btn.style.backgroundColor = '#cbd5e1';
-          };
-          btn.onmouseout = () => {
-              if (!isActive) btn.style.backgroundColor = '#e2e8f0';
-          };
-
           btn.onclick = () => {
               if (selectedExcelDistricts.has(d)) selectedExcelDistricts.delete(d);
               else selectedExcelDistricts.add(d);
@@ -9698,13 +9679,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
   const btnSelectAllDistricts = document.getElementById('btnSelectAllDistricts');
   if(btnSelectAllDistricts){
-    // Kemaskini butang "Pilih Semua" supaya ikut warna tema dan saiz yang sepadan
-    btnSelectAllDistricts.className = 'btn';
-    btnSelectAllDistricts.style.backgroundColor = 'var(--theme-color)';
-    btnSelectAllDistricts.style.color = 'white';
-    btnSelectAllDistricts.style.padding = '10px 20px';
-    btnSelectAllDistricts.style.fontSize = '0.95rem';
-    
     btnSelectAllDistricts.addEventListener('click', () => {
         if (selectedExcelDistricts.size === allExcelDistricts.length) {
             selectedExcelDistricts.clear();
