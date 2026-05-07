@@ -9377,7 +9377,59 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     }
   };
   Chart.register(alivePlugin);
+  // =========================================================================
+  // FUNGSI WARNA FORM DINAMIK (KOSONG vs DIISI)
+  // =========================================================================
+  function applyDynamicFormColors() {
+      // Tab utama yang mengandungi borang
+      const formContainers = ['tab-checker', 'tab-database', 'tab-profile', 'tab-pelulus-action'];
+      
+      formContainers.forEach(tabId => {
+          const tab = document.getElementById(tabId);
+          if (!tab) return;
+          
+          // Pilih semua elemen input, select dan textarea (Kecuali butang radio, file, checkbox & hidden)
+          const fields = tab.querySelectorAll('input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):not([type="hidden"]):not([hidden]), select, textarea');
+          
+          fields.forEach(field => {
+              // Abaikan field tertentu yang kita tak nak ubah warnanya (contoh: readonly, field status ✔/✗)
+              if (field.readOnly || field.disabled || field.classList.contains('status-input') || field.id === 'db_pautan') {
+                  field.classList.remove('form-empty', 'form-filled');
+                  return;
+              }
+              
+              // Jika ruangan mempunyai teks/nilai
+              if (field.value && field.value.trim() !== '') {
+                  if (!field.classList.contains('form-filled')) {
+                      field.classList.remove('form-empty');
+                      field.classList.add('form-filled');
+                  }
+              } 
+              // Jika ruangan kosong
+              else {
+                  if (!field.classList.contains('form-empty')) {
+                      field.classList.remove('form-filled');
+                      field.classList.add('form-empty');
+                  }
+              }
+          });
+      });
+  }
 
+  // 1. Pantau setiap kali pengguna menaip / pilih sesuatu (Real-time)
+  document.addEventListener('input', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) applyDynamicFormColors();
+  });
+  
+  document.addEventListener('change', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) applyDynamicFormColors();
+  });
+
+  // 2. Semak secara automatik setiap 1 saat (Berguna bila borang diisi automatik oleh AI/Database)
+  setInterval(applyDynamicFormColors, 1000);
+  
+  // Panggil sekali sewaktu sistem mula dibuka
+  setTimeout(applyDynamicFormColors, 500);
 
 });
 

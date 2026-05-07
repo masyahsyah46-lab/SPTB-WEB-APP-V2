@@ -97,6 +97,22 @@
             display: block;
         }
 
+        /* --- KOD BARU: WARNA FORM DINAMIK --- */
+        .form-empty {
+            background-color: #fffbeb !important; /* Kuning Cair (Kosong) */
+            border: 1px solid #fcd34d !important;
+            transition: all 0.3s ease;
+        }
+        
+        .form-filled {
+            background-color: #f0fdf4 !important; /* Hijau Cair (Diisi) */
+            border: 1px solid #4ade80 !important; 
+            color: #166534 !important; /* Teks Hijau Gelap */
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+        /* ------------------------------------ */
+
         /* KOD BARU: Kotak Carta Terapung */
         .chart-container {
             animation: floatingBox 4s ease-in-out infinite;
