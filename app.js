@@ -1562,8 +1562,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateStatusChart(data) {
-    console.log("V6.5.2 updateStatusChart dipanggil dengan data:", data.length);
-    
     const canvasId = 'chartStatus';
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
@@ -1571,7 +1569,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dashboardStatusChart = safeDestroyChart(dashboardStatusChart, canvasId);
     
     let labels = [], counts = [], colors = [];
-    
     if (currentUser.role === 'PENGESYOR') {
       const sokong = data.filter(d => d.syor_status === 'SOKONG').length;
       const tidak = data.filter(d => d.syor_status === 'TIDAK DISOKONG').length;
@@ -1594,31 +1591,33 @@ document.addEventListener('DOMContentLoaded', () => {
         labels: labels,
         datasets: [{
           data: counts,
-          backgroundColor: colors
+          backgroundColor: colors,
+          borderWidth: 3,           
+          borderColor: '#ffffff',
+          hoverOffset: 15,          
+          borderRadius: 8           
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '75%',              
+        animation: {
+          animateScale: true,
+          animateRotate: true,
+          duration: 2000,
+          easing: 'easeOutElastic'  
+        },
         plugins: {
-          title: {
-            display: true,
-            text: currentUser.role === 'PENGESYOR' ? 'Status Syor' : 'Status Permohonan',
-            font: {
-              size: 14,
-              weight: 'bold'
-            }
-          }
+          alive: { enabled: true }, /* KOD BARU: MENGAKTIFKAN NAFAS (ALIVE) */
+          title: { display: true, text: currentUser.role === 'PENGESYOR' ? 'Status Syor' : 'Status Permohonan', font: { size: 14, weight: 'bold' } },
+          legend: { position: 'bottom' }
         }
       }
     });
-    
-    console.log("V6.5.2 Status chart updated successfully");
   }
 
   function updateApplicationTypeChart(data) {
-    console.log("V6.5.2 updateApplicationTypeChart dipanggil dengan data:", data.length);
-    
     const canvasId = 'chartTypeDist';
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
@@ -1633,42 +1632,40 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const labels = Object.keys(types);
     const values = Object.values(types);
-    
-    if (labels.length === 0) {
-      return;
-    }
+    if (labels.length === 0) return;
     
     dashboardTypeChart = new Chart(ctx, {
-      type: 'pie',
+      type: 'doughnut',             
       data: {
         labels: labels,
         datasets: [{
           data: values,
-          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'],
+          borderWidth: 3,
+          borderColor: '#ffffff',
+          hoverOffset: 15,          
+          borderRadius: 6           
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '60%',
+        animation: {
+          animateScale: true,
+          duration: 1800,
+          easing: 'easeOutQuart'    
+        },
         plugins: {
-          title: {
-            display: true,
-            text: 'Jenis Permohonan',
-            font: {
-              size: 14,
-              weight: 'bold'
-            }
-          }
+          alive: { enabled: true }, /* KOD BARU: MENGAKTIFKAN NAFAS (ALIVE) */
+          title: { display: true, text: 'Jenis Permohonan', font: { size: 14, weight: 'bold' } },
+          legend: { position: 'bottom' }
         }
       }
     });
-    
-    console.log("V6.5.2 Application type chart updated successfully");
   }
 
   function updateRejectionReasonChart(data) {
-    console.log("V6.5.2 updateRejectionReasonChart dipanggil dengan data:", data.length);
-    
     const container = document.getElementById('chartReasonDistContainer');
     const canvasId = 'chartReasonDist';
     const ctx = document.getElementById(canvasId);
@@ -1681,24 +1678,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     const rejected = data.filter(d => d.kelulusan && (d.kelulusan.includes('TOLAK') || d.kelulusan.includes('SIASAT')));
-    
     if (rejected.length === 0) {
       if (container) container.style.display = 'none';
       return;
     }
     
     if (container) container.style.display = 'block';
-    
     const reasons = {};
     rejected.forEach(item => {
       const r = item.alasan ? item.alasan.trim() : 'Tiada Alasan';
       reasons[r] = (reasons[r] || 0) + 1;
     });
     
-    const sortedReasons = Object.entries(reasons)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
-    
+    const sortedReasons = Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const reasonLabels = sortedReasons.map(r => r[0].length > 30 ? r[0].substring(0, 27) + '...' : r[0]);
     const reasonValues = sortedReasons.map(r => r[1]);
     
@@ -1709,27 +1701,221 @@ document.addEventListener('DOMContentLoaded', () => {
         datasets: [{
           label: 'Jumlah',
           data: reasonValues,
-          backgroundColor: '#ef4444'
+          backgroundColor: '#ef4444',
+          borderRadius: 8,          
+          borderSkipped: false,
+          barPercentage: 0.7
         }]
       },
       options: {
         indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+          duration: 1500,
+          easing: 'easeOutQuart'    
+        },
         plugins: {
-          title: {
-            display: true,
-            text: 'Alasan Penolakan',
-            font: {
-              size: 14,
-              weight: 'bold'
-            }
-          }
+          alive: { enabled: true }, /* KOD BARU: MENGAKTIFKAN NAFAS (ALIVE) */
+          title: { display: true, text: 'Alasan Penolakan', font: { size: 14, weight: 'bold' } }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { display: false } } 
+        }
+      }
+    });
+  }
+
+  function updateKonsultansiChart(data) {
+    const canvasId = 'chartKonsultansi';
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    
+    dashboardKonsultansiChart = safeDestroyChart(dashboardKonsultansiChart, canvasId);
+    
+    const counts = { 'Emel': 0, 'WhatsApp': 0, 'Call': 0 };
+    data.forEach(item => {
+      const konsultansi = (item.jenis_konsultansi || '').toLowerCase();
+      if (konsultansi.includes('emel')) counts['Emel']++;
+      if (konsultansi.includes('whatsapp')) counts['WhatsApp']++;
+      if (konsultansi.includes('call') || konsultansi.includes('panggilan')) counts['Call']++;
+    });
+    
+    const labels = Object.keys(counts);
+    const values = Object.values(counts);
+    
+    dashboardKonsultansiChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Jumlah Konsultansi',
+          data: values,
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+          borderRadius: 8,          
+          borderSkipped: false,
+          maxBarThickness: 50
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 1500,
+          easing: 'easeOutQuart'    
+        },
+        plugins: {
+          alive: { enabled: true }, /* KOD BARU: MENGAKTIFKAN NAFAS (ALIVE) */
+          title: { display: true, text: 'Statistik Jenis Konsultansi', font: { size: 14, weight: 'bold' } },
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Bilangan' }, ticks: { stepSize: 1 }, border: { display: false } },
+          x: { grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  function updateRecommenderCharts(userData, filteredData) {
+    if (recommenderMonthlyChart) { recommenderMonthlyChart.destroy(); recommenderMonthlyChart = null; }
+    const monthlyTrendCanvas = document.getElementById('chartMonthlyTrend');
+    if (!monthlyTrendCanvas) return;
+    const monthlyCtx = monthlyTrendCanvas.getContext('2d');
+    
+    monthlyCtx.clearRect(0, 0, monthlyTrendCanvas.width, monthlyTrendCanvas.height);
+    const monthlyData = {};
+    const monthlyLabels = [];
+    const currentYear = dashboardData.currentYear;
+    const currentMonth = dashboardData.currentMonth;
+    
+    const monthsToShow = 6;
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const date = new Date(currentYear, currentMonth - 1 - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = `${date.toLocaleString('ms-MY', { month: 'short' })} ${date.getFullYear()}`;
+      monthlyData[monthKey] = { label: monthLabel, supported: 0, notSupported: 0 };
+      monthlyLabels.push(monthKey);
+    }
+    
+    filteredData.forEach(item => {
+      if (item.start_date && item.pengesyor && item.pengesyor.toUpperCase() === currentUser.name.toUpperCase()) {
+        const date = new Date(item.start_date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (monthlyData[monthKey]) {
+          if (item.syor_status && item.syor_status.includes('TIDAK DISOKONG')) monthlyData[monthKey].notSupported++;
+          else if (item.syor_status && item.syor_status.includes('SOKONG')) monthlyData[monthKey].supported++;
         }
       }
     });
     
-    console.log("V6.5.2 Rejection reason chart updated successfully");
+    recommenderMonthlyChart = new Chart(monthlyCtx, {
+      type: 'bar',
+      data: {
+        labels: monthlyLabels.map(key => monthlyData[key]?.label || key),
+        datasets: [
+          {
+            label: 'SOKONG',
+            data: monthlyLabels.map(key => monthlyData[key]?.supported || 0),
+            backgroundColor: '#10b981',
+            borderRadius: 6,        
+            borderSkipped: false
+          },
+          {
+            label: 'TIDAK DISOKONG',
+            data: monthlyLabels.map(key => monthlyData[key]?.notSupported || 0),
+            backgroundColor: '#ef4444',
+            borderRadius: 6,        
+            borderSkipped: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1500, easing: 'easeOutQuart' }, 
+        plugins: {
+          alive: { enabled: true }, /* KOD BARU: MENGAKTIFKAN NAFAS (ALIVE) */
+          legend: { position: 'top' },
+          title: { display: true, text: 'Trend Syor Bulanan' }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Bilangan Syor' }, ticks: { stepSize: 1 }, border: { display: false } },
+          x: { title: { display: true, text: 'Bulan' }, grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  function updateApproverCharts(userData, filteredData) {
+    if (approverMonthlyChart) { approverMonthlyChart.destroy(); approverMonthlyChart = null; }
+    const monthlyTrendCanvas = document.getElementById('chartMonthlyTrend');
+    if (!monthlyTrendCanvas) return;
+    const monthlyCtx = monthlyTrendCanvas.getContext('2d');
+    
+    monthlyCtx.clearRect(0, 0, monthlyTrendCanvas.width, monthlyTrendCanvas.height);
+    const monthlyData = {};
+    const monthlyLabels = [];
+    const currentYear = dashboardData.currentYear;
+    const currentMonth = dashboardData.currentMonth;
+    
+    const monthsToShow = 6;
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const date = new Date(currentYear, currentMonth - 1 - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = `${date.toLocaleString('ms-MY', { month: 'short' })} ${date.getFullYear()}`;
+      monthlyData[monthKey] = { label: monthLabel, approved: 0, rejected: 0 };
+      monthlyLabels.push(monthKey);
+    }
+    
+    filteredData.forEach(item => {
+      if (item.start_date) {
+        const date = new Date(item.start_date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (monthlyData[monthKey]) {
+          if (item.kelulusan && item.kelulusan.includes('LULUS')) monthlyData[monthKey].approved++;
+          else if (item.kelulusan && (item.kelulusan.includes('TOLAK') || item.kelulusan.includes('SIASAT'))) monthlyData[monthKey].rejected++;
+        }
+      }
+    });
+    
+    approverMonthlyChart = new Chart(monthlyCtx, {
+      type: 'bar',
+      data: {
+        labels: monthlyLabels.map(key => monthlyData[key]?.label || key),
+        datasets: [
+          {
+            label: 'DILULUSKAN',
+            data: monthlyLabels.map(key => monthlyData[key]?.approved || 0),
+            backgroundColor: '#10b981',
+            borderRadius: 6,        
+            borderSkipped: false
+          },
+          {
+            label: 'DITOLAK/SIASAT',
+            data: monthlyLabels.map(key => monthlyData[key]?.rejected || 0),
+            backgroundColor: '#ef4444',
+            borderRadius: 6,        
+            borderSkipped: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1500, easing: 'easeOutQuart' }, 
+        plugins: {
+          alive: { enabled: true }, /* KOD BARU: MENGAKTIFKAN NAFAS (ALIVE) */
+          legend: { position: 'top' },
+          title: { display: true, text: 'Trend Kelulusan Bulanan' }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Bilangan Permohonan' }, ticks: { stepSize: 1 }, border: { display: false } },
+          x: { title: { display: true, text: 'Bulan' }, grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
   }
 
   // =========================================================================
@@ -1862,28 +2048,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateRecommenderCharts(userData, filteredData) {
-    if (recommenderMonthlyChart) {
-      recommenderMonthlyChart.destroy();
-      recommenderMonthlyChart = null;
-    }
-    
+    if (recommenderMonthlyChart) { recommenderMonthlyChart.destroy(); recommenderMonthlyChart = null; }
     const monthlyTrendCanvas = document.getElementById('chartMonthlyTrend');
-    if (!monthlyTrendCanvas) {
-      console.error('V6.5.2 Chart canvas elements not found');
-      return;
-    }
-    
+    if (!monthlyTrendCanvas) return;
     const monthlyCtx = monthlyTrendCanvas.getContext('2d');
-    if (!monthlyCtx) {
-      console.error('V6.5.2 Could not get 2D context for charts');
-      return;
-    }
     
     monthlyCtx.clearRect(0, 0, monthlyTrendCanvas.width, monthlyTrendCanvas.height);
-    
     const monthlyData = {};
     const monthlyLabels = [];
-    
     const currentYear = dashboardData.currentYear;
     const currentMonth = dashboardData.currentMonth;
     
@@ -1892,11 +2064,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const date = new Date(currentYear, currentMonth - 1 - i, 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthLabel = `${date.toLocaleString('ms-MY', { month: 'short' })} ${date.getFullYear()}`;
-      monthlyData[monthKey] = {
-        label: monthLabel,
-        supported: 0,
-        notSupported: 0
-      };
+      monthlyData[monthKey] = { label: monthLabel, supported: 0, notSupported: 0 };
       monthlyLabels.push(monthKey);
     }
     
@@ -1904,13 +2072,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (item.start_date && item.pengesyor && item.pengesyor.toUpperCase() === currentUser.name.toUpperCase()) {
         const date = new Date(item.start_date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
         if (monthlyData[monthKey]) {
-          if (item.syor_status && item.syor_status.includes('TIDAK DISOKONG')) {
-            monthlyData[monthKey].notSupported++;
-          } else if (item.syor_status && item.syor_status.includes('SOKONG')) {
-            monthlyData[monthKey].supported++;
-          }
+          if (item.syor_status && item.syor_status.includes('TIDAK DISOKONG')) monthlyData[monthKey].notSupported++;
+          else if (item.syor_status && item.syor_status.includes('SOKONG')) monthlyData[monthKey].supported++;
         }
       }
     });
@@ -1924,78 +2088,43 @@ document.addEventListener('DOMContentLoaded', () => {
             label: 'SOKONG',
             data: monthlyLabels.map(key => monthlyData[key]?.supported || 0),
             backgroundColor: '#10b981',
-            borderColor: '#059669',
-            borderWidth: 1
+            borderRadius: 6,        /* KOD BARU */
+            borderSkipped: false
           },
           {
             label: 'TIDAK DISOKONG',
             data: monthlyLabels.map(key => monthlyData[key]?.notSupported || 0),
             backgroundColor: '#ef4444',
-            borderColor: '#dc2626',
-            borderWidth: 1
+            borderRadius: 6,        /* KOD BARU */
+            borderSkipped: false
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 1500, easing: 'easeOutQuart' }, /* KOD BARU */
         scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Bilangan Syor'
-            },
-            ticks: {
-              stepSize: 1,
-              callback: function(value) {
-                return Number.isInteger(value) ? value : '';
-              }
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'Bulan'
-            }
-          }
+          y: { beginAtZero: true, title: { display: true, text: 'Bilangan Syor' }, ticks: { stepSize: 1 }, border: { display: false } },
+          x: { title: { display: true, text: 'Bulan' }, grid: { display: false }, border: { display: false } }
         },
         plugins: {
-          legend: {
-            position: 'top',
-          },
-          title: {
-            display: true,
-            text: 'Trend Syor Bulanan'
-          }
+          legend: { position: 'top' },
+          title: { display: true, text: 'Trend Syor Bulanan' }
         }
       }
     });
   }
 
   function updateApproverCharts(userData, filteredData) {
-    if (approverMonthlyChart) {
-      approverMonthlyChart.destroy();
-      approverMonthlyChart = null;
-    }
-    
+    if (approverMonthlyChart) { approverMonthlyChart.destroy(); approverMonthlyChart = null; }
     const monthlyTrendCanvas = document.getElementById('chartMonthlyTrend');
-    if (!monthlyTrendCanvas) {
-      console.error('V6.5.2 Approver chart canvas elements not found');
-      return;
-    }
-    
+    if (!monthlyTrendCanvas) return;
     const monthlyCtx = monthlyTrendCanvas.getContext('2d');
-    if (!monthlyCtx) {
-      console.error('V6.5.2 Could not get 2D context for approver charts');
-      return;
-    }
     
     monthlyCtx.clearRect(0, 0, monthlyTrendCanvas.width, monthlyTrendCanvas.height);
-    
     const monthlyData = {};
     const monthlyLabels = [];
-    
     const currentYear = dashboardData.currentYear;
     const currentMonth = dashboardData.currentMonth;
     
@@ -2004,11 +2133,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const date = new Date(currentYear, currentMonth - 1 - i, 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthLabel = `${date.toLocaleString('ms-MY', { month: 'short' })} ${date.getFullYear()}`;
-      monthlyData[monthKey] = {
-        label: monthLabel,
-        approved: 0,
-        rejected: 0
-      };
+      monthlyData[monthKey] = { label: monthLabel, approved: 0, rejected: 0 };
       monthlyLabels.push(monthKey);
     }
     
@@ -2016,13 +2141,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (item.start_date) {
         const date = new Date(item.start_date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
         if (monthlyData[monthKey]) {
-          if (item.kelulusan && item.kelulusan.includes('LULUS')) {
-            monthlyData[monthKey].approved++;
-          } else if (item.kelulusan && (item.kelulusan.includes('TOLAK') || item.kelulusan.includes('SIASAT'))) {
-            monthlyData[monthKey].rejected++;
-          }
+          if (item.kelulusan && item.kelulusan.includes('LULUS')) monthlyData[monthKey].approved++;
+          else if (item.kelulusan && (item.kelulusan.includes('TOLAK') || item.kelulusan.includes('SIASAT'))) monthlyData[monthKey].rejected++;
         }
       }
     });
@@ -2036,47 +2157,29 @@ document.addEventListener('DOMContentLoaded', () => {
             label: 'DILULUSKAN',
             data: monthlyLabels.map(key => monthlyData[key]?.approved || 0),
             backgroundColor: '#10b981',
-            borderColor: '#059669',
-            borderWidth: 1
+            borderRadius: 6,        /* KOD BARU */
+            borderSkipped: false
           },
           {
             label: 'DITOLAK/SIASAT',
             data: monthlyLabels.map(key => monthlyData[key]?.rejected || 0),
             backgroundColor: '#ef4444',
-            borderColor: '#dc2626',
-            borderWidth: 1
+            borderRadius: 6,        /* KOD BARU */
+            borderSkipped: false
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 1500, easing: 'easeOutQuart' }, /* KOD BARU */
         scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Bilangan Permohonan'
-            },
-            ticks: {
-              stepSize: 1
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'Bulan'
-            }
-          }
+          y: { beginAtZero: true, title: { display: true, text: 'Bilangan Permohonan' }, ticks: { stepSize: 1 }, border: { display: false } },
+          x: { title: { display: true, text: 'Bulan' }, grid: { display: false }, border: { display: false } }
         },
         plugins: {
-          legend: {
-            position: 'top',
-          },
-          title: {
-            display: true,
-            text: 'Trend Kelulusan Bulanan'
-          }
+          legend: { position: 'top' },
+          title: { display: true, text: 'Trend Kelulusan Bulanan' }
         }
       }
     });
@@ -8354,68 +8457,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     }
   }
 
-  function updateKonsultansiChart(data) {
-    console.log("V6.5.2 updateKonsultansiChart dipanggil dengan data:", data.length);
-    
-    const canvasId = 'chartKonsultansi';
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-    
-    dashboardKonsultansiChart = safeDestroyChart(dashboardKonsultansiChart, canvasId);
-    
-    const counts = { 'Emel': 0, 'WhatsApp': 0, 'Call': 0 };
-    
-    data.forEach(item => {
-      const konsultansi = (item.jenis_konsultansi || '').toLowerCase();
-      if (konsultansi.includes('emel')) counts['Emel']++;
-      if (konsultansi.includes('whatsapp')) counts['WhatsApp']++;
-      if (konsultansi.includes('call') || konsultansi.includes('panggilan')) counts['Call']++;
-    });
-    
-    const labels = Object.keys(counts);
-    const values = Object.values(counts);
-    
-    dashboardKonsultansiChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Jumlah Konsultansi',
-          data: values,
-          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Statistik Jenis Konsultansi',
-            font: {
-              size: 14,
-              weight: 'bold'
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Bilangan'
-            },
-            ticks: {
-              stepSize: 1
-            }
-          }
-        }
-      }
-    });
-    
-    console.log("V6.5.2 Konsultansi chart updated successfully");
-  }
-
   const btnSendDb = document.getElementById('btnSendToSheet');
   if (btnSendDb) {
     btnSendDb.addEventListener('click', async () => {
@@ -9311,6 +9352,32 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
   // Mulakan jam sebaik sahaja sistem dimuatkan
   startDigitalClock();
+  
+  // --- KOD BARU: Plugin Carta Hidup (Breathing Effect) ---
+  const alivePlugin = {
+    id: 'alivePlugin',
+    beforeDraw: (chart) => {
+      if (chart.options.plugins.alive?.enabled) {
+        const timestamp = Date.now();
+        // Cipta pergerakan sinus yang sangat halus (scale antara 0.99 ke 1.01)
+        const scale = 1 + Math.sin(timestamp / 1000) * 0.01;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.translate(chart.width / 2, chart.height / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-chart.width / 2, -chart.height / 2);
+      }
+    },
+    afterDraw: (chart) => {
+      if (chart.options.plugins.alive?.enabled) {
+        chart.ctx.restore();
+        // Arahkan browser untuk lukis semula setiap frame (animasi berterusan)
+        requestAnimationFrame(() => chart.render());
+      }
+    }
+  };
+  Chart.register(alivePlugin);
+
 
 });
 

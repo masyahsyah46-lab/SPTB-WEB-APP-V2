@@ -96,6 +96,28 @@
         .menu-overlay.show {
             display: block;
         }
+
+        /* KOD BARU: Kotak Carta Terapung */
+        .chart-container {
+            animation: floatingBox 4s ease-in-out infinite;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .chart-container:nth-child(even) {
+            animation-delay: 1s; /* Supaya gerak tak serentak */
+        }
+
+        @keyframes floatingBox {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Efek Glow pada carta yang aktif */
+        .chart-container:hover {
+            box-shadow: 0 15px 35px rgba(37, 99, 235, 0.2);
+            z-index: 10;
+        }
+
         /* --- KOD BARU: ANIMASI MORPHING UPLOAD (BULAT -> PETAK) --- */
         .morph-box {
             width: 150px;
