@@ -10389,7 +10389,9 @@ if (!isConfirmed) return;
           });
   }
 
+  // =========================================================================
   // Event Delegation untuk Bakul
+  // =========================================================================
   const bakulTableBody = document.getElementById('bakulTableBody');
   if (bakulTableBody && !bakulTableBody.hasAttribute('data-listener-bakul')) {
       bakulTableBody.setAttribute('data-listener-bakul', 'true');
@@ -10400,7 +10402,6 @@ if (!isConfirmed) return;
           if (padamBtn) {
               const docId = padamBtn.getAttribute('data-id');
               
-              // PENGGUNAAN MODAL BARU
               const isPadam = await CustomAppModal.confirm(
                   "Adakah anda pasti mahu memadam permohonan ini dari bakul? Ia akan dipadam selamanya.", 
                   "Padam Dari Bakul", 
@@ -10418,8 +10419,7 @@ if (!isConfirmed) return;
                       CustomAppModal.alert("Gagal memadam permohonan dari bakul Firebase.", "Ralat", "error");
                   }
               }
-          } 
-          else if (prosesBtn) {
+          } else if (prosesBtn) {
               playSoundEffect('ui_click.mp3');
               const docId = prosesBtn.getAttribute('data-id');
               const company = prosesBtn.getAttribute('data-company');
@@ -10430,7 +10430,6 @@ if (!isConfirmed) return;
 
               const hasUnsaved = checkUnsavedData();
               if (hasUnsaved) {
-                  // PENGGUNAAN MODAL BARU UNTUK OVERWRITE
                   const isConfirmedOverwrite = await CustomAppModal.confirm(
                       "Borang semakan anda sekarang mempunyai data. Anda pasti mahu overwrite (timpa) borang ini?",
                       "Data Belum Disimpan",
@@ -10521,4 +10520,4 @@ if (!isConfirmed) return;
 
 }); // <--- PENUTUP UTAMA UNTUK DOMContentLoaded
 
-console.log("STB System V6.5.2 - Web App JS loaded successfully dengan GIS Integration, Separated History Search, Dynamic URL Routing, Mobile Menu, Audio Controls & Pemutihan Email Fix");
+console.log("STB System V6.5.2 - Web App JS loaded successfully");
