@@ -16,51 +16,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-auth-compat.js"></script>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    /* =========================================================
-           PATCH KEMASAN UI: KURANGKAN RUANG KOSONG (SPACING FIX)
-      ========================================================= */
-        
-        /* 1. Rapatkan semua Modal (Popup) ke bahagian atas skrin (tidak lagi ke tengah) */
-        .admin-stats-modal, .custom-modal-overlay {
-            align-items: flex-start !important; 
-            padding-top: 8vh !important; /* Jarak 8% dari atas skrin */
-        }
-
-        /* 2. Kurangkan ketebalan padding dalam kad Custom Modal */
-        .custom-modal-card {
-            padding: 25px 20px !important;
-        }
-        .custom-modal-icon-container {
-            width: 65px !important; 
-            height: 65px !important; 
-            margin: 0 auto 15px auto !important;
-            font-size: 2.2rem !important;
-        }
-        .custom-modal-message {
-            margin-bottom: 20px !important;
-        }
-
-        /* 3. Betulkan kedudukan butang X (Close) supaya lebih kemas & tak bertindih */
-        .admin-stats-close {
-            top: 12px !important;
-            right: 15px !important;
-            line-height: 1 !important;
-            z-index: 10 !important;
-        }
-
-        /* 4. Kurangkan jarak atas untuk tajuk di dalam Modal Quick Check */
-        #quickCheckModal .admin-stats-content {
-            padding-top: 20px !important;
-        }
-        #quickCheckModal h2 {
-            margin-top: 5px !important;
-            padding-right: 30px !important; /* Elak teks langgar butang X */
-        }
-        
-        /* 5. Rapatkan sedikit jarak keseluruhan App Container utama */
-        #app-container {
-            padding-top: 20px !important;
-        }
 
     <style>
         :root {
@@ -1412,6 +1367,51 @@
             .profile-company-cidb { font-size: 12pt !important; font-weight: normal; }
             .profile-company-grade { font-size: 12pt !important; font-weight: bold; margin-top: 4px; color: #facc15; }
             .footer-info-group { display: flex; flex-direction: column; gap: 4px; }
+        }
+      /* =========================================================
+           PATCH KEMASAN UI: KURANGKAN RUANG KOSONG (SPACING FIX)
+      ========================================================= */
+        
+        /* 1. Rapatkan semua Modal (Popup) ke bahagian atas skrin (tidak lagi ke tengah) */
+        .admin-stats-modal, .custom-modal-overlay {
+            align-items: flex-start !important; 
+            padding-top: 8vh !important; /* Jarak 8% dari atas skrin */
+        }
+
+        /* 2. Kurangkan ketebalan padding dalam kad Custom Modal */
+        .custom-modal-card {
+            padding: 25px 20px !important;
+        }
+        .custom-modal-icon-container {
+            width: 65px !important; 
+            height: 65px !important; 
+            margin: 0 auto 15px auto !important;
+            font-size: 2.2rem !important;
+        }
+        .custom-modal-message {
+            margin-bottom: 20px !important;
+        }
+
+        /* 3. Betulkan kedudukan butang X (Close) supaya lebih kemas & tak bertindih */
+        .admin-stats-close {
+            top: 12px !important;
+            right: 15px !important;
+            line-height: 1 !important;
+            z-index: 10 !important;
+        }
+
+        /* 4. Kurangkan jarak atas untuk tajuk di dalam Modal Quick Check */
+        #quickCheckModal .admin-stats-content {
+            padding-top: 20px !important;
+        }
+        #quickCheckModal h2 {
+            margin-top: 5px !important;
+            padding-right: 30px !important; /* Elak teks langgar butang X */
+        }
+        
+        /* 5. Rapatkan sedikit jarak keseluruhan App Container utama */
+        #app-container {
+            padding-top: 20px !important;
         }
     </style>
 </head>
