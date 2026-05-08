@@ -9586,17 +9586,19 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       if (rawData.length < 2) return;
       const headers = rawData[0].map(h => String(h).toLowerCase().trim());
       
+      // KEMASKINI: Cari kolum dengan lebih spesifik. 'update type' sahaja, abaikan 'category'. 
+      // Tambah 'disctrict' untuk menyokong format typo dari CIDB.
       const keys = {
           company: headers.findIndex(h => h.includes('syarikat') || h.includes('company') || h.includes('nama')),
           grade: headers.findIndex(h => h.includes('gred') || h.includes('grade')),
           cidb: headers.findIndex(h => h.includes('cidb') || h.includes('reg') || h.includes('pendaftar')),
           district: headers.findIndex(h => h.includes('daerah') || h.includes('district') || h.includes('negeri') || h.includes('disctrict')),
           date: headers.findIndex(h => h.includes('tarikh') || h.includes('date') || h.includes('submitted')),
-          updateType: headers.findIndex(h => h.includes('update') || h.includes('type') || h.includes('kategori') || h.includes('category'))
+          updateType: headers.findIndex(h => h.includes('update type') || h === 'update type' || h.includes('jenis perubahan'))
       };
 
       if (keys.company === -1 || keys.grade === -1 || keys.cidb === -1) {
-          alert("Format Excel tidak sah. Mesti ada kolum Syarikat, Gred, dan CIDB/Reg No.");
+          CustomAppModal.alert("Format Excel tidak sah. Mesti ada kolum Syarikat, Gred, dan Reg. No/CIDB.", "Ralat Format", "error");
           return;
       }
 
@@ -9607,9 +9609,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           const g = String(row[keys.grade] || '').trim();
           if (!gradeRegex.test(g)) return false; 
           
-          // KEMASKINI 2: LOGIK SANGAT KETAT UNTUK PENGESYOR
+          // LOGIK KETAT UNTUK PENGESYOR: Pastikan peraturan wujud sebelum membenarkan data dipaparkan
           if (currentUser && currentUser.role === 'PENGESYOR') {
-              
               // Jika tiada peraturan dikesan langsung untuk pengesyor ini, HALANG SEMUA
               if (!firebaseUserRules || !firebaseUserRules.cidbEndsWith || firebaseUserRules.cidbEndsWith.length === 0) {
                   return false; 
@@ -9630,7 +9631,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               }
           }
           
-          // Lulus hanya jika syarat di atas dipenuhi (Atau jika user adalah Admin)
+          // Lulus hanya jika syarat di atas dipenuhi (Atau jika user adalah Admin/Ketua Seksyen)
           return true; 
           
       }).map((row, idx) => {
@@ -9654,6 +9655,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               grade: String(row[keys.grade] || '-').trim().toUpperCase(),
               dateSubmitted: dateStr,
               rawSortDate: rawSortDate,
+              // Jika tiada Update Type dalam Excel (contoh: fail 56), ia akan simpan sebagai '-'
               updateType: keys.updateType !== -1 && row[keys.updateType] ? String(row[keys.updateType]).trim() : '-'
           };
       });
