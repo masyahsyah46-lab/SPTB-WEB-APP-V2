@@ -10418,9 +10418,7 @@ if (!isConfirmed) return;
                       CustomAppModal.alert("Gagal memadam permohonan dari bakul Firebase.", "Ralat", "error");
                   }
               }
-          } //
-
-          //
+          } 
           else if (prosesBtn) {
               playSoundEffect('ui_click.mp3');
               const docId = prosesBtn.getAttribute('data-id');
@@ -10432,7 +10430,15 @@ if (!isConfirmed) return;
 
               const hasUnsaved = checkUnsavedData();
               if (hasUnsaved) {
-                  if (!confirm("Borang semakan anda sekarang mempunyai data. Anda pasti mahu overwrite (timpa) borang ini?")) {
+                  // PENGGUNAAN MODAL BARU UNTUK OVERWRITE
+                  const isConfirmedOverwrite = await CustomAppModal.confirm(
+                      "Borang semakan anda sekarang mempunyai data. Anda pasti mahu overwrite (timpa) borang ini?",
+                      "Data Belum Disimpan",
+                      "warning",
+                      "Ya, Timpa",
+                      true
+                  );
+                  if (!isConfirmedOverwrite) {
                       return;
                   }
                   await resetFormForEdit();
@@ -10461,7 +10467,6 @@ if (!isConfirmed) return;
 
               if(radioVal === 'ubah_maklumat') {
                   document.getElementById('input_ubah_maklumat').style.display = 'block';
-                  // Ambil spesifik jenis dari kurungan, contoh: UBAH MAKLUMAT (Minor) -> Minor
                   let specInfo = type;
                   if (type.includes('(')) specInfo = type.split('(')[1].replace(')', '').trim();
                   document.getElementById('input_ubah_maklumat').value = specInfo;
@@ -10507,12 +10512,13 @@ if (!isConfirmed) return;
               saveDatabaseFormData();
 
               switchTab('stb');
-              alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!");
+              
+              // PENGGUNAAN MODAL BARU
+              await CustomAppModal.alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!", "Berjaya Dipindahkan", "success");
           }
       });
   }
-  
 
-});
+}); // <--- PENUTUP UTAMA UNTUK DOMContentLoaded
 
 console.log("STB System V6.5.2 - Web App JS loaded successfully dengan GIS Integration, Separated History Search, Dynamic URL Routing, Mobile Menu, Audio Controls & Pemutihan Email Fix");
