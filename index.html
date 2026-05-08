@@ -597,6 +597,45 @@
             border: 2px solid white;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        /* =========================================================================
+           CUSTOM ANIMATED MODAL (PENGGANTI ALERT & CONFIRM CHROME)
+           ========================================================================= */
+        
+        .custom-modal-card {
+            background: white; border-radius: 24px; padding: 35px 25px;
+            width: 90%; max-width: 420px; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(0.7) translateY(30px); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        
+        .custom-modal-icon-container {
+            width: 80px; height: 80px; margin: 0 auto 20px auto;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 2.5rem; background: #f8fafc;
+        }
+        .icon-success { color: #10b981; background: #dcfce7; box-shadow: 0 0 20px rgba(16,185,129,0.2); }
+        .icon-warning { color: #f59e0b; background: #fef3c7; box-shadow: 0 0 20px rgba(245,158,11,0.2); }
+        .icon-error { color: #ef4444; background: #fee2e2; box-shadow: 0 0 20px rgba(239,68,68,0.2); }
+        .icon-info { color: #3b82f6; background: #dbeafe; box-shadow: 0 0 20px rgba(59,130,246,0.2); }
+        
+        .custom-modal-title { font-size: 1.4rem; font-weight: 800; color: #1e293b; margin: 0 0 12px 0; }
+        .custom-modal-message { font-size: 1rem; color: #64748b; margin-bottom: 30px; line-height: 1.6; }
+        
+        .custom-modal-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .custom-modal-btn {
+            padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 1rem;
+            cursor: pointer; border: none; transition: all 0.2s ease; flex: 1; min-width: 130px;
+        }
+        .custom-modal-btn-cancel { background: #f1f5f9; color: #475569; }
+        .custom-modal-btn-cancel:hover { background: #e2e8f0; color: #1e293b; }
+        
+        .custom-modal-btn-confirm { background: var(--theme-color, #2563eb); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .custom-modal-btn-confirm:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(37,99,235,0.4); }
+        
+        .custom-modal-btn-danger { background: #ef4444; color: white; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+        .custom-modal-btn-danger:hover { background: #dc2626; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(239,68,68,0.4); }
 
         /* ===== PANEL AUDIO DI BAWAH TABS - SENTIASA KELIHATAN ===== */
         #audio-control-panel {
@@ -1390,6 +1429,18 @@
         </div>
         <button id="btnLogoutTop" class="btn-top-fullview" style="color: #ef4444; border-color: #ef4444;" title="Log Keluar">🚪 Log Keluar</button>
         
+       <div id="customModalOverlay" class="custom-modal-overlay">
+        <div class="custom-modal-card" id="customModalCard">
+            <div class="custom-modal-icon-container" id="customModalIconBox">
+                <span id="customModalIcon"></span>
+            </div>
+            <h3 class="custom-modal-title" id="customModalTitle">Makluman</h3>
+            <p class="custom-modal-message" id="customModalMessage">Mesej di sini</p>
+            <div class="custom-modal-actions" id="customModalActions">
+                </div>
+        </div>
+    </div>
+        
 
         <!-- NAVIGATION TABS -->
         <div class="tabs no-print" id="tabs-container">
@@ -1838,7 +1889,6 @@
             <div class="info-grid"><div class="info-row"><span class="info-label">Jenis Pendaftaran:</span><span class="info-value" id="printProfile_jenis_pendaftaran"></span></div><div class="info-row"><span class="info-label">Tarikh Daftar:</span><span class="info-value" id="printProfile_tarikh_daftar"></span></div><div class="info-row full-width"><span class="info-label">Alamat Berdaftar:</span><span class="info-value" id="printProfile_alamat_berdaftar"></span></div><div class="info-row full-width"><span class="info-label">Alamat Surat-menyurat:</span><span class="info-value" id="printProfile_alamat_surat"></span></div><div class="info-row"><span class="info-label">No. Telefon Syarikat:</span><span class="info-value" id="printProfile_no_telefon_syarikat"></span></div><div class="info-row"><span class="info-label">No. Fax:</span><span class="info-value" id="printProfile_no_fax"></span></div><div class="info-row"><span class="info-label">Emel Syarikat:</span><span class="info-value" id="printProfile_email_syarikat"></span></div><div class="info-row"><span class="info-label">Web Address:</span><span class="info-value" id="printProfile_web"></span></div></div>
             <div class="footer"><div class="footer-info-group"><div class="date-generated">Tarikh Jana: <span id="printProfile_date"></span></div><div class="jenis-perubahan-info" style="font-size: 11pt; font-weight: bold; margin-top: 8px;">Jenis Perubahan: <span id="printProfile_jenis_perubahan"></span></div></div><div class="qr-code"><img id="printProfileQrCode" src="" alt="QR Code" style="width:80px; height:80px;"></div></div>
         </div>
-        <div class="admin-stats-modal" id="quickCheckModal" style="display: none; z-index: 10001;">
             <div class="admin-stats-content" style="max-width: 650px; width: 95%; padding: 20px; border-top: 5px solid #f97316;">
                 <span class="admin-stats-close" id="quickCheckClose">&times;</span>
                 <h2 style="color: #ea580c; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; display: flex; align-items: center; gap: 10px;">
@@ -1852,28 +1902,7 @@
             </div>
         </div>
     </div>
-        <div class="admin-stats-modal" id="type-modal-bakul" style="display: none; z-index: 10002;">
-            <div class="admin-stats-content" style="max-width: 400px; width: 90%; padding: 25px; text-align: center; border-top: 5px solid #2563eb;">
-                <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 1.3rem;">🛒 Simpan ke Bakul</h3>
-                <p style="color: #64748b; margin-bottom: 15px;"><span id="modal-bakul-count" style="font-weight: bold; color: #ef4444; font-size: 1.1rem;">0</span> permohonan dipilih.</p>
-                
-                <div style="text-align: left; margin-bottom: 25px;">
-                    <label style="font-weight: bold; color: #374151; display: block; margin-bottom: 8px;">Pilih Jenis Permohonan:</label>
-                    <select id="modal-bakul-type-select" style="width: 100%; padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; font-weight: bold; color: #1e40af; cursor: pointer;">
-                        <option value="BARU">BARU</option>
-                        <option value="PEMBAHARUAN">PEMBAHARUAN</option>
-                        <option value="UBAH MAKLUMAT">UBAH MAKLUMAT</option>
-                        <option value="UBAH GRED">UBAH GRED</option>
-                    </select>
-                </div>
-                
-                <div style="display: flex; gap: 10px; justify-content: center;">
-                    <button id="btnCancelBakulModal" class="btn btn-white" style="flex: 1; padding: 12px; font-size: 1rem;">Batal</button>
-                    <button id="btnConfirmBakulModal" class="btn btn-blue" style="flex: 1; padding: 12px; font-size: 1rem;">Simpan</button>
-                </div>
-            </div>
-        </div>
-
+     
     <!-- Library Scripts dari CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
