@@ -5261,7 +5261,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const dbPautanValue = document.getElementById('db_pautan')?.value || '';
       const isDriveAlreadyCreated = driveFolderCreated === true || (dbPautanValue && dbPautanValue.trim() !== '');
       
-      // Jika folder Drive sudah wujud
       if (isDriveAlreadyCreated) {
         window.print();
         hasPrinted = true;
@@ -5273,7 +5272,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         return;
       }
       
-      // Pengesahan untuk cetak dan simpan ke Drive
       const userConfirmed = await CustomAppModal.confirm(
           "Adakah anda pasti ingin mencetak dan menyimpan borang ini ke Google Drive?",
           "Cetak & Simpan",
@@ -5293,14 +5291,12 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         return;
       }
       
-      // Validasi Nama Syarikat
       const companyName = document.getElementById('borang_syarikat')?.value.trim();
       if (!companyName) {
         await CustomAppModal.alert("Sila isi Nama Syarikat terlebih dahulu sebelum mencetak dan menyimpan ke Drive.", "Maklumat Tidak Lengkap", "warning");
         return;
       }
       
-      // Validasi Jenis Permohonan
       const applicationTypeRadio = document.querySelector('input[name="jenisApp"]:checked');
       let applicationType = '';
       if (applicationTypeRadio) {
@@ -5315,7 +5311,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         return;
       }
       
-      // Validasi Tarikh Mohon
       const tarikhMohon = document.getElementById('borang_tarikh_mohon')?.value;
       if (!tarikhMohon) {
         await CustomAppModal.alert("Sila isi Tarikh Mohon terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
@@ -5323,7 +5318,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       }
       
       const userName = currentUser.name;
-      
       const now = new Date();
       const currentMonth = now.toLocaleString('ms-MY', { month: 'long' });
       const currentYear = now.getFullYear();
@@ -5332,16 +5326,11 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       let formattedDate = '';
       try {
         const tarikhDate = new Date(tarikhMohon);
-        formattedDate = tarikhDate.toLocaleDateString('ms-MY', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }).replace(/\//g, '-');
+        formattedDate = tarikhDate.toLocaleDateString('ms-MY', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
       } catch (e) {
         formattedDate = tarikhMohon;
       }
       
-      // Dapatkan update type jika ada (contoh: UBAH MAKLUMAT (Nama Syarikat))
       const ubahMaklumatVal = document.getElementById('input_ubah_maklumat')?.value || '';
       const ubahGredVal = document.getElementById('input_ubah_gred')?.value || '';
       let specificType = '';
@@ -5360,7 +5349,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const pdfCss = generatePdfCssString(userColorHex);
       const printHTML = `<style>${pdfCss}</style>${printLayoutElement.outerHTML}`;
       
-      // Paparkan Loading Overlay
       if (loadingOverlay) {
         loadingOverlay.style.display = 'flex';
         loadingText.textContent = 'Menyimpan ke Drive';
@@ -5370,10 +5358,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         const progressPercent = document.getElementById('loading-progress-percent');
         const progressLabel = document.getElementById('loading-progress-label');
         
-        if (progressBar) {
-          progressBar.style.display = 'block';
-          progressBar.style.width = '0%';
-        }
+        if (progressBar) { progressBar.style.display = 'block'; progressBar.style.width = '0%'; }
         if (progressPercent) progressPercent.textContent = '0%';
         if (progressLabel) progressLabel.textContent = 'Menyediakan dokumen PDF...';
         
@@ -5389,23 +5374,12 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
             if (currentProgress > 90) currentProgress = 90;
             if (progressBar) progressBar.style.width = `${currentProgress}%`;
             if (progressPercent) progressPercent.textContent = `${currentProgress}%`;
-            
-            if (progressLabel) {
-              if (currentProgress < 30) {
-                progressLabel.textContent = 'Menyediakan dokumen PDF...';
-              } else if (currentProgress < 60) {
-                progressLabel.textContent = 'Mencipta folder di Google Drive...';
-              } else {
-                progressLabel.textContent = 'Menyimpan fail...';
-              }
-            }
+            if (progressLabel) progressLabel.textContent = currentProgress < 30 ? 'Menyediakan dokumen PDF...' : currentProgress < 60 ? 'Mencipta folder di Google Drive...' : 'Menyimpan fail...';
           }
         }, 200);
       }
       
-      if (printLayoutElement) {
-        printLayoutElement.style.display = 'none';
-      }
+      if (printLayoutElement) printLayoutElement.style.display = 'none';
       
       const payload = {
         action: 'cetak_dan_simpan_pdf',
@@ -5420,15 +5394,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       
       try {
         const response = await fetchWithRetry(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload)
         }, 3, 1000);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
         
         if (loadingProgressInterval) clearInterval(loadingProgressInterval);
@@ -5442,303 +5411,48 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         
         if (result.success) {
           await playSuccessSound();
-          
           const folderUrl = result.folder_url;
-          
           const dbPautanField = document.getElementById('db_pautan');
-          if (dbPautanField) {
-            dbPautanField.value = folderUrl;
-          }
+          if (dbPautanField) dbPautanField.value = folderUrl;
           
           driveFolderCreated = true;
           createdFolderUrl = folderUrl;
           userFolderUrl = result.user_folder_url || '';
           
-          if (cbCreateDriveFolder) {
-            cbCreateDriveFolder.checked = false;
-          }
+          if (cbCreateDriveFolder) cbCreateDriveFolder.checked = false;
           
-          await storageWrapper.set({ 
-            'stb_drive_folder_url': folderUrl,
-            'stb_user_folder_url': userFolderUrl
-          });
-          
+          await storageWrapper.set({ 'stb_drive_folder_url': folderUrl, 'stb_user_folder_url': userFolderUrl });
           updateOpenDriveButton();
           
           setTimeout(async () => {
-            if (loadingOverlay) {
-              loadingOverlay.style.display = 'none';
-            }
-            if (printLayoutElement) {
-              printLayoutElement.style.display = '';
-            }
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
+            if (printLayoutElement) printLayoutElement.style.display = '';
             
             window.print();
-            
             hasPrinted = true;
             storageWrapper.set({ 'stb_has_printed': true });
-            
-            if (btnSyncToDb) {
-              btnSyncToDb.style.display = 'inline-block';
-            }
-            
-            if (driveResult && folderUrl) {
-              showDriveFolderLink(folderUrl, userFolderUrl);
-            }
+            if (btnSyncToDb) btnSyncToDb.style.display = 'inline-block';
+            if (driveResult && folderUrl) showDriveFolderLink(folderUrl, userFolderUrl);
             
             await CustomAppModal.alert("Borang telah dicetak dan fail PDF berjaya disimpan di Drive!<br><br>Pautan folder telah dimasukkan secara automatik ke Input Database.", "Berjaya Disimpan", "success");
-            
           }, 500);
           
         } else {
           throw new Error(result.message || 'Gagal menyimpan ke Drive');
         }
-        
       } catch (error) {
         console.error("V6.5.2 Print & Drive save error:", error);
-        
         await playErrorSound();
-        
         if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        
-        if (loadingOverlay) {
-          loadingOverlay.style.display = 'none';
-        }
-        if (printLayoutElement) {
-          printLayoutElement.style.display = '';
-        }
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        if (printLayoutElement) printLayoutElement.style.display = '';
         
         await CustomAppModal.alert(`Gagal menyimpan ke Drive: ${error.message}<br><br>Cetakan akan diteruskan tanpa simpanan Drive.`, "Ralat Drive", "error");
         
         window.print();
         hasPrinted = true;
         storageWrapper.set({ 'stb_has_printed': true });
-        if (btnSyncToDb) {
-          btnSyncToDb.style.display = 'inline-block';
-        }
-      } //
-      
-      // ========================================================
-      // JANGAN TUTUP EVENT LISTENER LAGI, TERUSKAN DENGAN VALIDASI
-      // ========================================================
-      
-      // Validasi Nama Syarikat
-      const companyName = document.getElementById('borang_syarikat')?.value.trim();
-      if (!companyName) {
-        await CustomAppModal.alert("Sila isi Nama Syarikat terlebih dahulu sebelum mencetak dan menyimpan ke Drive.", "Maklumat Tidak Lengkap", "warning");
-        return;
-      }
-      
-      // Validasi Jenis Permohonan
-      const applicationTypeRadio = document.querySelector('input[name="jenisApp"]:checked');
-      let applicationType = '';
-      if (applicationTypeRadio) {
-        if (applicationTypeRadio.value === 'baru') applicationType = 'BARU';
-        else if (applicationTypeRadio.value === 'pembaharuan') applicationType = 'PEMBAHARUAN';
-        else if (applicationTypeRadio.value === 'ubah_maklumat') applicationType = 'UBAH MAKLUMAT';
-        else if (applicationTypeRadio.value === 'ubah_gred') applicationType = 'UBAH GRED';
-      }
-      
-      if (!applicationType) {
-        await CustomAppModal.alert("Sila pilih Jenis Permohonan terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
-        return;
-      }
-      
-      // Validasi Tarikh Mohon
-      const tarikhMohon = document.getElementById('borang_tarikh_mohon')?.value;
-      if (!tarikhMohon) {
-        await CustomAppModal.alert("Sila isi Tarikh Mohon terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
-        return;
-      }
-      
-      // BARULAH KITA AMBIL NAMA & TARIKH UNTUK BUAT FOLDER
-      const userName = currentUser.name;
-      
-      const now = new Date();
-      const currentMonth = now.toLocaleString('ms-MY', { month: 'long' });
-      const currentYear = now.getFullYear();
-      const monthYearFolder = `${currentMonth.toUpperCase()} ${currentYear}`;
-      
-      let formattedDate = '';
-      try {
-        const tarikhDate = new Date(tarikhMohon);
-        formattedDate = tarikhDate.toLocaleDateString('ms-MY', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }).replace(/\//g, '-');
-      } catch (e) {
-        formattedDate = tarikhMohon;
-      }
-      
-      const subfolderName = `${applicationType} - ${formattedDate}`;
-      
-      const printLayoutElement = document.getElementById('printLayout');
-      if (!printLayoutElement) {
-        alert("Ralat: Elemen cetakan tidak ditemui.");
-        return;
-      }
-      
-      const userColorHex = getUserColorHex(currentUser.color);
-      
-      const pdfCss = generatePdfCssString(userColorHex);
-      
-      const printHTML = `<style>${pdfCss}</style>${printLayoutElement.outerHTML}`;
-      
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'flex';
-        loadingText.textContent = 'Menyimpan ke Drive';
-        if (loadingSubtext) loadingSubtext.textContent = 'Sila tunggu sebentar';
-        
-        const progressBar = document.getElementById('loading-progress-bar');
-        const progressPercent = document.getElementById('loading-progress-percent');
-        const progressLabel = document.getElementById('loading-progress-label');
-        
-        if (progressBar) {
-          progressBar.style.display = 'block';
-          progressBar.style.width = '0%';
-        }
-        if (progressPercent) progressPercent.textContent = '0%';
-        if (progressLabel) progressLabel.textContent = 'Menyediakan dokumen PDF...';
-        
-        const progressSteps = document.getElementById('loading-progress-steps');
-        if (progressSteps) progressSteps.style.display = 'flex';
-        
-        let currentProgress = 0;
-        if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        
-        loadingProgressInterval = setInterval(() => {
-          if (currentProgress < 90) {
-            currentProgress += Math.floor(Math.random() * 5) + 1;
-            if (currentProgress > 90) currentProgress = 90;
-            if (progressBar) progressBar.style.width = `${currentProgress}%`;
-            if (progressPercent) progressPercent.textContent = `${currentProgress}%`;
-            
-            if (progressLabel) {
-              if (currentProgress < 30) {
-                progressLabel.textContent = 'Menyediakan dokumen PDF...';
-              } else if (currentProgress < 60) {
-                progressLabel.textContent = 'Mencipta folder di Google Drive...';
-              } else {
-                progressLabel.textContent = 'Menyimpan fail...';
-              }
-            }
-          }
-        }, 200);
-      }
-      
-      if (printLayoutElement) {
-        printLayoutElement.style.display = 'none';
-      }
-      
-      const payload = {
-        action: 'cetak_dan_simpan_pdf',
-        company_name: companyName,
-        application_type: subfolderName,
-        month_year: monthYearFolder,
-        user_name: userName,
-        user_color: userColorHex,
-        main_folder_id: mainFolderId,
-        htmlContent: printHTML
-      };
-      
-      try {
-        const response = await fetchWithRetry(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        }, 3, 1000);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        const progressBar = document.getElementById('loading-progress-bar');
-        const progressPercent = document.getElementById('loading-progress-percent');
-        const progressLabel = document.getElementById('loading-progress-label');
-        
-        if (progressBar) progressBar.style.width = '100%';
-        if (progressPercent) progressPercent.textContent = '100%';
-        if (progressLabel) progressLabel.textContent = 'Selesai!';
-        
-        if (result.success) {
-          await playSuccessSound();
-          
-          const folderUrl = result.folder_url;
-          
-          const dbPautanField = document.getElementById('db_pautan');
-          if (dbPautanField) {
-            dbPautanField.value = folderUrl;
-          }
-          
-          driveFolderCreated = true;
-          createdFolderUrl = folderUrl;
-          userFolderUrl = result.user_folder_url || '';
-          
-          if (cbCreateDriveFolder) {
-            cbCreateDriveFolder.checked = false;
-          }
-          
-          await storageWrapper.set({ 
-            'stb_drive_folder_url': folderUrl,
-            'stb_user_folder_url': userFolderUrl
-          });
-          
-          updateOpenDriveButton();
-          
-          setTimeout(() => {
-            if (loadingOverlay) {
-              loadingOverlay.style.display = 'none';
-            }
-            if (printLayoutElement) {
-              printLayoutElement.style.display = '';
-            }
-            
-            window.print();
-            
-            hasPrinted = true;
-            storageWrapper.set({ 'stb_has_printed': true });
-            
-            if (btnSyncToDb) {
-              btnSyncToDb.style.display = 'inline-block';
-            }
-            
-            alert("Borang telah dicetak dan fail PDF berjaya disimpan di Drive!\nPautan folder telah dimasukkan secara automatik ke Input Database.");
-            
-            if (driveResult && folderUrl) {
-              showDriveFolderLink(folderUrl, userFolderUrl);
-            }
-          }, 500);
-          
-        } else {
-          throw new Error(result.message || 'Gagal menyimpan ke Drive');
-        }
-        
-      } catch (error) {
-        console.error("V6.5.2 Print & Drive save error:", error);
-        
-        await playErrorSound();
-        
-        if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        
-        if (loadingOverlay) {
-          loadingOverlay.style.display = 'none';
-        }
-        if (printLayoutElement) {
-          printLayoutElement.style.display = '';
-        }
-        
-        alert("Gagal menyimpan ke Drive: " + error.message + "\n\nCetakan akan diteruskan tanpa simpanan Drive.");
-        
-        window.print();
-        hasPrinted = true;
-        storageWrapper.set({ 'stb_has_printed': true });
-        if (btnSyncToDb) {
-          btnSyncToDb.style.display = 'inline-block';
-        }
+        if (btnSyncToDb) btnSyncToDb.style.display = 'inline-block';
       }
     });
   }
