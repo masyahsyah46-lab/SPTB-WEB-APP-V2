@@ -6325,6 +6325,25 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     }
     
     resetInactivityTimer();
+
+    // --- KOD BARU: Download Senarai Pelulus dari Database ---
+    console.log("V6.5.2 Memuat turun senarai pelulus untuk notifikasi...");
+    fetchWithRetry(SCRIPT_URL + '?action=getUsers&t=' + Date.now(), { 
+        method: 'GET',
+        redirect: 'follow' // Penting untuk Google Apps Script
+    }, 3, 1000)
+      .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.json();
+      })
+      .then(users => {
+        usersList = users;
+        storageWrapper.set({ 'stb_users_cache': users });
+        populateWhatsAppDropdown();
+        console.log("V6.5.2 Senarai Pelulus berjaya dikemaskini:", users.length);
+      })
+      .catch(err => console.error("V6.5.2 Gagal muat turun senarai pengguna:", err));
+    // ---------------------------------------------------------
   }
 
   async function initAppBasedOnRole() {
