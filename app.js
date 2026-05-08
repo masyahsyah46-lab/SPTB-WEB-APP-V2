@@ -8697,7 +8697,14 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         const isPernahHantarSpi = (dbStartDateValue !== '' && dbStartDateValue === dbSubmitDateValue);
         
         if (!hasSyorAndConfirmed && !isPernahHantarSpi) {
-          confirmHantarEmel = confirm("Adakah anda ingin hantar emel syarikat ini ke SPI?");
+          // --- GANTI KEPADA MODAL ANIMASI DI SINI ---
+          confirmHantarEmel = await CustomAppModal.confirm(
+              "Adakah anda ingin hantar emel syarikat ini ke SPI?",
+              "Hantar Emel SPI",
+              "info",
+              "Ya, Hantar",
+              false
+          );
         }
       }
       
@@ -8780,11 +8787,20 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         }
         
         if (whatsappUrl) {
-            if (confirm(message + "\n\nKlik 'OK' untuk buka dan hantar notifikasi WhatsApp sekarang.")) {
+            // --- GANTI KEPADA MODAL ANIMASI DI SINI ---
+            const isWaConfirmed = await CustomAppModal.confirm(
+                message + "<br><br>Adakah anda ingin buka dan hantar notifikasi WhatsApp sekarang?",
+                "Hantar WhatsApp",
+                "success",
+                "Ya, Hantar",
+                false
+            );
+            if (isWaConfirmed) {
                 window.open(whatsappUrl, '_blank');
             }
         } else {
-            alert(message);
+            // --- GANTI KEPADA MODAL ANIMASI DI SINI ---
+            await CustomAppModal.alert(message, "Selesai", "success");
         }
         
         await resetFormAfterSubmit();
