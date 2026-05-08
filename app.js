@@ -9951,14 +9951,14 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   const btnConfirmBakulModal = document.getElementById('btnConfirmBakulModal');
 
   if (btnSaveToBasket) {
-      btnSaveToBasket.addEventListener('click', () => {
+      btnSaveToBasket.addEventListener('click', async () => {
           if (!currentUserFirebaseCode) {
-              alert("Akaun anda tiada kod tapisan dikesan. Anda tidak boleh menyimpan ke bakul.");
+              await CustomAppModal.alert("Akaun anda tiada kod tapisan dikesan. Anda tidak boleh menyimpan ke bakul.", "Akses Ditolak", "error");
               return;
           }
           const checked = document.querySelectorAll('.excel-row-check:checked');
           if (checked.length === 0) {
-              alert("Sila tick kotak permohonan yang ingin disimpan terlebih dahulu.");
+              await CustomAppModal.alert("Sila tick kotak permohonan yang ingin disimpan terlebih dahulu.", "Pilih Permohonan", "warning");
               return;
           }
           
@@ -10012,17 +10012,22 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           try {
               await Promise.all(batch);
               playSoundEffect('positive_chime.mp3');
-              alert(`${batch.length} permohonan telah berjaya dimasukkan ke Bakul!`);
+              
               checked.forEach(cb => cb.checked = false);
               const checkAllBox = document.getElementById('selectAllExcelRows');
               if(checkAllBox) checkAllBox.checked = false;
               
               if (typeModalBakul) typeModalBakul.style.display = 'none';
               switchTab('tab-bakul');
+              
+              // GUNA MODAL BARU
+              await CustomAppModal.alert(`${batch.length} permohonan telah berjaya dimasukkan ke Bakul!`, "Berjaya Disimpan", "success");
+              
           } catch(e) {
               console.error("Gagal simpan ke bakul:", e);
               playSoundEffect('error_buzz.mp3');
-              alert("Ralat sistem. Gagal menyimpan ke bakul Firebase.");
+              // GUNA MODAL BARU
+              await CustomAppModal.alert("Ralat sistem. Gagal menyimpan ke bakul Firebase.", "Ralat", "error");
           } finally {
               btnConfirmBakulModal.innerText = "Simpan";
               btnConfirmBakulModal.disabled = false;
