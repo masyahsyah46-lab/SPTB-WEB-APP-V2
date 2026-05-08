@@ -7844,31 +7844,50 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
   async function deleteOrClearRecord(item, actionType) {
     if (!item || !item.row) {
-      alert("Rekod tidak sah.");
+      await CustomAppModal.alert("Rekod tidak sah.", "Ralat", "error");
       return;
     }
     
     let message = '';
     let action = '';
+    let modalTitle = 'Pengesahan';
+    let btnText = 'Teruskan';
+    let isDanger = true;
+    let modalType = 'warning';
     
     if (actionType === 'padam_semua') {
       message = `Anda pasti mahu PADAM KESELURUHAN rekod untuk ${item.syarikat}? Tindakan ini TIDAK BOLEH dibatalkan.`;
       action = 'padam_semua';
+      modalTitle = "Pengesahan Padam";
+      btnText = "Ya, Padam";
+      isDanger = true;
+      modalType = "error"; // Modal warna merah
     } else if (actionType === 'undo_syor') {
       message = `Anda pasti mahu UNDO syor untuk ${item.syarikat}? Rekod akan kembali ke "Belum Syor".`;
       action = 'undo_syor';
+      modalTitle = "Pengesahan Undo";
+      btnText = "Ya, Undo";
+      isDanger = false;
+      modalType = "warning"; // Modal warna oren/kuning
     } else if (actionType === 'undo_lulus') {
       message = `Anda pasti mahu UNDO kelulusan untuk ${item.syarikat}? Rekod akan kembali ke Inbox Pelulus.`;
       action = 'undo_lulus';
+      modalTitle = "Pengesahan Undo";
+      btnText = "Ya, Undo";
+      isDanger = false;
+      modalType = "warning"; // Modal warna oren/kuning
     } else {
       message = `Anda pasti mahu KOSONGKAN SYOR untuk ${item.syarikat}?`;
       action = 'padam_syor';
+      modalTitle = "Kosongkan Syor";
+      btnText = "Ya, Kosongkan";
+      isDanger = true;
+      modalType = "warning";
     }
     
-    playSoundEffect('minimal alert.mp3');
-    
-    const isConfirmed = await CustomAppModal.confirm(message, "Pengesahan Padam", "danger", "Ya, Padam", true);
-if (!isConfirmed) return;
+    // Paparkan Custom Modal yang tepat mengikut tindakan
+    const isConfirmed = await CustomAppModal.confirm(message, modalTitle, modalType, btnText, isDanger);
+    if (!isConfirmed) return;
     
     simulateLoadingWithSteps(
       ['Menghubungi pangkalan data...', 'Memadam rekod...', 'Menyusun semula senarai...'],
@@ -8011,9 +8030,8 @@ if (!isConfirmed) return;
         btnDelete.innerText = 'Padam';
         btnDelete.style.backgroundColor = '#ef4444';
         btnDelete.onclick = function() { 
-          if (confirm("Adakah anda pasti mahu MEMADAM KESELURUHAN rekod permohonan ini dari Sheet? Tindakan ini tidak boleh dibatalkan.")) {
+            // Serahkan sepenuhnya kepada fungsi deleteOrClearRecord untuk memaparkan Modal
             deleteOrClearRecord(item, 'padam_semua');
-          }
         };
         btnContainer.appendChild(btnDelete);
       } else if (type === 'inbox') {
@@ -8156,6 +8174,8 @@ if (!isConfirmed) return;
 
  async function loadRecordToDbOnly(item) {
     const hasUnsaved = checkUnsavedData();
+    
+    // Jika ada data belum simpan, tanya sekali sahaja (Warning)
     if (hasUnsaved) {
       const confirmLoad = await CustomAppModal.confirm(
           "Anda mempunyai data yang belum disimpan. Muatkan rekod ini akan menulis semula borang. Teruskan?",
@@ -8166,15 +8186,19 @@ if (!isConfirmed) return;
       );
       if (!confirmLoad) return;
       
-      await resetFormForEdit(); // <--- TAMBAH 'await' DI SINI
+      await resetFormForEdit();
+    } 
+    // Jika tiada data belum simpan, tanya adakah pasti mahu edit (Info)
+    else {
+      const finalConfirm = await CustomAppModal.confirm(
+          "Adakah anda pasti mahu mengedit rekod ini?", 
+          "Edit Rekod", 
+          "info",
+          "Ya, Edit",
+          false
+      );
+      if(!finalConfirm) return;
     }
-    
-    const finalConfirm = await CustomAppModal.confirm(
-        "Adakah anda pasti mahu mengedit rekod ini?", 
-        "Edit Rekod", 
-        "info"
-    );
-    if(!finalConfirm) return;
 
     document.getElementById('db_row_index').value = item.row || '';
     document.getElementById('db_syarikat').value = item.syarikat || '';
