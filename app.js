@@ -9547,7 +9547,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   const alivePlugin = {
     id: 'alivePlugin',
     beforeDraw: (chart) => {
-      if (chart.options.plugins.alive?.enabled) {
+      // Pastikan chart.ctx wujud sebelum draw
+      if (chart.options.plugins.alive?.enabled && chart.ctx) {
         const timestamp = Date.now();
         // Cipta pergerakan sinus yang sangat halus (scale antara 0.99 ke 1.01)
         const scale = 1 + Math.sin(timestamp / 1000) * 0.01;
@@ -9559,10 +9560,14 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       }
     },
     afterDraw: (chart) => {
-      if (chart.options.plugins.alive?.enabled) {
+      if (chart.options.plugins.alive?.enabled && chart.ctx) {
         chart.ctx.restore();
-        // Arahkan browser untuk lukis semula setiap frame (animasi berterusan)
-        requestAnimationFrame(() => chart.render());
+        // Arahkan browser lukis semula HANYA jika canvas masih aktif/wujud
+        requestAnimationFrame(() => {
+          if (chart && chart.canvas && chart.ctx) {
+            chart.render();
+          }
+        });
       }
     }
   };
