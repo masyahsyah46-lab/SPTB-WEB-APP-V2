@@ -10264,7 +10264,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               if (progressLabel) progressLabel.textContent = 'Selesai!';
               
               // 3. Tunggu setengah saat (500ms) supaya pengguna nampak peratusan penuh 100%
-              setTimeout(() => {
+              // Tambah perkataan 'async' di dalam setTimeout supaya boleh menggunakan fungsi bunyi
+              setTimeout(async () => {
                   hideLoading();
                   
                   if (result.status === 'success') {
@@ -10273,6 +10274,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                       
                       queueSpiModal.classList.add('show');
                       queueSpiModal.style.display = 'flex';
+                      
+                      // KOD TAMBAHAN: Mainkan bunyi berjaya!
+                      await playSuccessSound();
+                      
                   } else {
                       CustomAppModal.alert('Gagal mendapatkan senarai queue.', 'Ralat', 'error');
                   }
