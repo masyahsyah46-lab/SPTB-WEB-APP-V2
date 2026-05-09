@@ -6465,8 +6465,16 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           slider.style.height = activeBtn.offsetHeight + 'px';
           slider.style.left = activeBtn.offsetLeft + 'px';
           slider.style.top = activeBtn.offsetTop + 'px';
+          slider.style.opacity = '1'; // Pastikan slider kelihatan
+      } else if (slider) {
+          // JIKA TIADA TAB AKTIF (Contohnya apabila berada di Portal YouTube)
+          // Sembunyikan slider sepenuhnya
+          slider.style.opacity = '0';
+          slider.style.width = '0px';
+          slider.style.height = '0px';
       }
   }
+
   // Kemaskini apabila skrin berubah saiz
   window.addEventListener('resize', updateTabSlider);
   // ------------------------------------------------
