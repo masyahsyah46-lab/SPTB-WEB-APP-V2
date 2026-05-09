@@ -1846,7 +1846,8 @@
                         <p style="margin: 0; font-size: 1.1rem;"><strong id="excelRowCount" style="color: #2563eb; font-size: 1.2rem;">0</strong> rekod dipaparkan untuk anda.</p>
                         <button id="btnSaveToBasket" class="btn btn-blue" style="font-size: 1rem; padding: 10px 20px;">🛒 Simpan Ke Bakul</button>
                     </div>
-                   <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    
+                    <div style="overflow-x: auto; overflow-y: auto; max-height: 60vh; border: 1px solid #e2e8f0; border-radius: 8px;">
                         <table class="monthly-table" style="width: 100%; margin-top: 0;">
                             <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 10;">
                                 <tr>
@@ -1857,12 +1858,13 @@
                                     <th>Gred</th>
                                     <th>Tarikh Excel</th>
                                     <th>Update Type</th>
-                                    <th>Status Semasa</th> </tr>
+                                    <th>Status Semasa</th> 
+                                </tr>
                             </thead>
                             <tbody id="excelTableBody"></tbody>
                         </table>
                     </div>
-                </div>
+                    </div>
             </div>
         </div>
         
@@ -1967,24 +1969,19 @@
                 <h2 style="color: #1e40af; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; display:flex; align-items:center; gap:8px;">
                     📋 Senarai Queue Permohonan ke SPI
                 </h2>
-                
-                <h3 style="color: #0ea5e9; margin-top: 20px; font-size:1.1rem;">🔍 Siasatan Biasa</h3>
-                <div style="border: 1px solid #cbd5e1; border-radius: 8px; background: white;">
-                    <table class="monthly-table" style="width: 100%; margin-top: 0; font-size: 0.9rem;">
-                        <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 10;">
-                            <tr><th width="10%">Bil</th><th width="45%">Syarikat</th><th width="20%">CIDB</th><th width="25%">Pengesyor</th></tr>
-                        </thead>
-                        <tbody id="tbodyQueueSiasat"><tr><td colspan="4" style="text-align:center;">Tiada data</td></tr></tbody>
+                <h3 style="color:#0ea5e9; margin-top:20px; font-size:1.1rem;">🔍 Siasatan Biasa</h3>
+                <div style="max-height: 35vh; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white; margin-bottom:15px;">
+                    <table class="monthly-table" style="margin-top:0;">
+                        <thead><tr><th width="10%">Bil</th><th width="45%">Syarikat</th><th width="20%">CIDB</th><th width="25%">Pengesyor</th></tr></thead>
+                        <tbody id="tbodyQueueSiasat"><tr><td colspan="4">Tiada data</td></tr></tbody>
                     </table>
                 </div>
 
-                <h3 style="color: #e74c3c; margin-top: 20px; font-size:1.1rem;">⚠️ Pemutihan</h3>
-                <div style="border: 1px solid #cbd5e1; border-radius: 8px; background: white;">
-                    <table class="monthly-table" style="width: 100%; margin-top: 0; font-size: 0.9rem;">
-                        <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 10;">
-                            <tr><th width="10%">Bil</th><th width="45%">Syarikat</th><th width="20%">CIDB</th><th width="25%">Pengesyor</th></tr>
-                        </thead>
-                        <tbody id="tbodyQueuePemutihan"><tr><td colspan="4" style="text-align:center;">Tiada data</td></tr></tbody>
+                <h3 style="color:#e74c3c; font-size:1.1rem;">⚠️ Pemutihan</h3>
+                <div style="max-height: 35vh; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white;">
+                    <table class="monthly-table" style="margin-top:0;">
+                        <thead><tr><th width="10%">Bil</th><th width="45%">Syarikat</th><th width="20%">CIDB</th><th width="25%">Pengesyor</th></tr></thead>
+                        <tbody id="tbodyQueuePemutihan"><tr><td colspan="4">Tiada data</td></tr></tbody>
                     </table>
                 </div>
             </div>
