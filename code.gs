@@ -12,7 +12,7 @@ const AUTHORIZED_DOMAIN = "kuskop.gov.my";
 const ADDITIONAL_AUTHORIZED_DOMAINS = ["kuskop.gov.my"]; // Boleh tambah domain lain jika perlu
 
 // =========================================================================
-// V6.4.9: API KEYS - DIPINDAHKAN KE BACKEND UNTUK KESELAMATAN
+// V6.5.0: API KEYS - DISIMPAN DI BACKEND UNTUK KESELAMATAN
 // =========================================================================
 const DEEPSEEK_API_KEY = "sk-afac9888701c4678a58dfef2d49feb7d";
 const GEMINI_API_KEY = "AIzaSyDuwh_qFiE-WeQnJiB1VCXj5mpf7fi96K0";
@@ -22,6 +22,16 @@ const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "tencent/hy3-preview:free";
+
+// =========================================================================
+// V6.5.0: FIREBASE PENGESYOR MAP - KOD RAHSIA DISIMPAN DI BACKEND
+// =========================================================================
+const FIREBASE_PENGESYOR_MAP = {
+  'zariff.zainudin@kuskop.gov.my': '0707',
+  'ilyanadia.azmi@kuskop.gov.my': '6166',
+  'norhamizi.hamdzah@kuskop.gov.my': '5757',
+  'khairulfitri.kamaruddin@kuskop.gov.my': '5381'
+};
 
 // Role definitions
 const ROLE_PENGESYOR = "PENGESYOR";
@@ -39,6 +49,74 @@ const EMAIL_CC_SPTB = "sptb.pkk@kuskop.gov.my";
 
 // Nama penghantar emel
 const EMAIL_SENDER_NAME = "Sistem Bersepadu SPTB";
+
+// =========================================================================
+// V6.5.0: FUNGSI MIDDLEWARE PENGESAHAN (VERIFICATION)
+// =========================================================================
+
+/**
+ * Fungsi verifyUserAccess: Middleware pengesahan akses pengguna
+ * Menyemak sama ada pengguna mempunyai role yang dibenarkan
+ * @param {string} email - Alamat emel pengguna
+ * @param {Array<string>} allowedRolesArray - Senarai role yang dibenarkan
+ * @returns {Object} - { isAuthorized: boolean, userProfile: Object|null, error: string|null }
+ */
+function verifyUserAccess(email, allowedRolesArray) {
+  try {
+    // Semak jika email disediakan
+    if (!email || email.toString().trim() === '') {
+      return {
+        isAuthorized: false,
+        userProfile: null,
+        error: 'Akses Ditolak: Emel tidak disediakan.'
+      };
+    }
+    
+    // Dapatkan pengesahan email dan domain
+    const authResult = getAuthenticatedUserEmail(email);
+    if (!authResult.isValid) {
+      return {
+        isAuthorized: false,
+        userProfile: null,
+        error: `Akses Ditolak: ${authResult.error}`
+      };
+    }
+    
+    // Cari profil pengguna dari Sheet 'Users'
+    const userProfile = findUserByEmail(authResult.email);
+    if (!userProfile) {
+      return {
+        isAuthorized: false,
+        userProfile: null,
+        error: 'Akses Ditolak: Pengguna tidak berdaftar dalam sistem.'
+      };
+    }
+    
+    // Semak role pengguna
+    const userRole = userProfile.role ? userProfile.role.toUpperCase() : '';
+    if (!allowedRolesArray.includes(userRole)) {
+      return {
+        isAuthorized: false,
+        userProfile: userProfile,
+        error: `Akses Ditolak: Role '${userRole}' tidak mempunyai kebenaran untuk tindakan ini.`
+      };
+    }
+    
+    return {
+      isAuthorized: true,
+      userProfile: userProfile,
+      error: null
+    };
+    
+  } catch (error) {
+    Logger.log(`[V6.5.0] Ralat dalam verifyUserAccess: ${error.toString()}`);
+    return {
+      isAuthorized: false,
+      userProfile: null,
+      error: `Ralat sistem semasa pengesahan: ${error.toString()}`
+    };
+  }
+}
 
 // =========================================================================
 // V6.4.9: FUNGSI AUTHENTIKASI - LOG MASUK AUTOMATIK GOOGLE
@@ -88,7 +166,7 @@ function getAuthenticatedUserEmail(email) {
     return { email: normalizedEmail, isValid: true, error: null };
 
   } catch (error) {
-    Logger.log(`[V6.4.9] Ralat mendapatkan email pengguna: ${error.toString()}`);
+    Logger.log(`[V6.5.0] Ralat mendapatkan email pengguna: ${error.toString()}`);
     return { 
       email: null, 
       isValid: false, 
@@ -108,13 +186,13 @@ function findUserByEmail(email) {
     const sheet = ss.getSheetByName(USERS_SHEET_NAME);
     
     if (!sheet) {
-      Logger.log(`[V6.4.9] Sheet '${USERS_SHEET_NAME}' tidak dijumpai`);
+      Logger.log(`[V6.5.0] Sheet '${USERS_SHEET_NAME}' tidak dijumpai`);
       return null;
     }
     
     const data = sheet.getDataRange().getDisplayValues();
     if (!data || data.length < 2) {
-      Logger.log(`[V6.4.9] Sheet '${USERS_SHEET_NAME}' tiada data`);
+      Logger.log(`[V6.5.0] Sheet '${USERS_SHEET_NAME}' tiada data`);
       return null;
     }
     
@@ -154,16 +232,16 @@ function findUserByEmail(email) {
           imageUrl: safeGet(finalImageIndex)
         };
 
-        Logger.log(`[V6.4.9] Pengguna dijumpai: ${user.name} (${user.email}) - Role: ${user.role}`);
+        Logger.log(`[V6.5.0] Pengguna dijumpai: ${user.name} (${user.email}) - Role: ${user.role}`);
         return user;
       }
     }
     
-    Logger.log(`[V6.4.9] Tiada padanan pengguna untuk emel: ${email}`);
+    Logger.log(`[V6.5.0] Tiada padanan pengguna untuk emel: ${email}`);
     return null;
     
   } catch (error) {
-    Logger.log(`[V6.4.9] Ralat mencari pengguna: ${error.toString()}`);
+    Logger.log(`[V6.5.0] Ralat mencari pengguna: ${error.toString()}`);
     return null;
   }
 }
@@ -171,6 +249,7 @@ function findUserByEmail(email) {
 /**
  * Fungsi untuk mengendalikan permintaan checkAuth dari frontend
  * DIUBAH: Menerima email dari parameter GET/POST dan bukannya Session.getActiveUser()
+ * V6.5.0: Menambah Firebase code untuk PENGESYOR
  * @param {string} email - Alamat emel dari frontend
  * @returns {ContentService.TextOutput} - Respons JSON dengan status pengesahan
  */
@@ -199,6 +278,18 @@ function handleCheckAuth(email) {
       });
     }
     
+    // V6.5.0: Jika role adalah PENGESYOR, semak dan masukkan Firebase code
+    if (userProfile.role === ROLE_PENGESYOR) {
+      const firebaseCode = FIREBASE_PENGESYOR_MAP[userProfile.email.toLowerCase()];
+      if (firebaseCode) {
+        userProfile.firebaseCode = firebaseCode;
+        Logger.log(`[V6.5.0] Firebase code disediakan untuk PENGESYOR: ${userProfile.email}`);
+      } else {
+        Logger.log(`[V6.5.0] Tiada Firebase code untuk PENGESYOR: ${userProfile.email}`);
+        // Tidak perlu gagalkan auth jika tiada Firebase code, cuma tidak disertakan
+      }
+    }
+    
     // Auth berjaya
     return createJSONOutput({
       authenticated: true,
@@ -207,7 +298,7 @@ function handleCheckAuth(email) {
     });
 
   } catch (error) {
-    Logger.log(`[V6.4.9] Ralat dalam handleCheckAuth: ${error.toString()}`);
+    Logger.log(`[V6.5.0] Ralat dalam handleCheckAuth: ${error.toString()}`);
     return createJSONOutput({
       authenticated: false,
       error: 'Ralat sistem semasa pengesahan: ' + error.toString(),
@@ -239,14 +330,21 @@ function doGet(e) {
       return handleCheckAuth(email);
     }
     
-    // === TAMBAH KOD INI ===
+    // V6.5.0: Handler untuk getQueueData - memerlukan pengesahan ADMIN
     if (action === "getQueueData") {
+      if (!email) {
+        return createJSONOutput({ status: "error", message: "Email diperlukan untuk akses queue data." });
+      }
+      const accessCheck = verifyUserAccess(email, [ROLE_ADMIN]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ status: "error", message: accessCheck.error });
+      }
+      
       const props = PropertiesService.getScriptProperties();
       const siasatQ = JSON.parse(props.getProperty('SIASAT_QUEUE') || "[]");
       const pemutihanQ = JSON.parse(props.getProperty('PEMUTIHAN_QUEUE') || "[]");
       return createJSONOutput({ status: "success", siasat: siasatQ, pemutihan: pemutihanQ });
     }
-    // ========================
     
     let result;
 
@@ -285,9 +383,7 @@ function doGet(e) {
 
 /**
  * Fungsi doPost: Mengendalikan permintaan POST (Simpan Data / Cipta Folder / Padam Rekod / Cetak PDF / AI Processing / CheckAuth)
- * DIUBAH: LockService untuk mengelakkan konflik tulis serentak (menyebabkan API 503)
- * DIUBAH: Handler processAI untuk pemprosesan AI di backend
- * DIUBAH: Menyokong checkAuth melalui POST dengan email dari payload JSON
+ * V6.5.0: Menambah pengesahan verifyUserAccess untuk semua tindakan kritikal
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -316,30 +412,67 @@ function doPost(e) {
     }
     
     // =====================================================================
+    // V6.5.0: PENGESAHAN UNTUK SEMUA TINDAKAN KRITIKAL
+    // =====================================================================
+    
+    // =====================================================================
     // V6.4.8: HANDLER BAHARU UNTUK AI PROCESSING (BACKEND)
+    // V6.5.0: Menambah pengesahan pengguna berdaftar
     // =====================================================================
     if (data.action === 'processAI') {
+      // Semak pengesahan untuk AI processing
+      if (!data.email) {
+        return createJSONOutput({ success: false, error: "Email diperlukan untuk AI processing." });
+      }
+      const accessCheck = verifyUserAccess(data.email, [ROLE_PENGESYOR, ROLE_ADMIN, ROLE_PELULUS]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ success: false, error: accessCheck.error });
+      }
       return handleProcessAI(data);
     }
     
     // Handler untuk padam rekod
     if (data.action === 'deleteRecord') {
+      // V6.5.0: Pengesahan ketat untuk deleteRecord
       return handleDeleteRecord(data, sheet);
     }
     
     // Handler khas: Butang Cipta Folder (Dari Popup)
     if (data.action === 'createDriveFolder') {
+      // V6.5.0: Pengesahan untuk createDriveFolder
+      if (!data.email) {
+        return createJSONOutput({ status: "error", message: "Email diperlukan untuk mencipta folder." });
+      }
+      const accessCheck = verifyUserAccess(data.email, [ROLE_PENGESYOR, ROLE_ADMIN]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ status: "error", message: accessCheck.error });
+      }
       return handleCreateDriveFolderAction(data);
     }
     
     // Handler khas: Log Aktiviti
     if (data.action === 'logActivity') {
+      if (!data.email) {
+        return createJSONOutput({ status: "error", message: "Email diperlukan untuk log aktiviti." });
+      }
+      const accessCheck = verifyUserAccess(data.email, [ROLE_PENGESYOR, ROLE_ADMIN, ROLE_PELULUS]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ status: "error", message: accessCheck.error });
+      }
       logActivity(data.user, data.actionType, data.description, data.folderId);
       return createJSONOutput({ status: "success", message: "Activity logged" });
     }
     
     // Handler baharu: Cetak dan simpan PDF
     if (data.action === 'cetak_dan_simpan_pdf') {
+      // V6.5.0: Pengesahan untuk cetak PDF
+      if (!data.email) {
+        return createJSONOutput({ success: false, message: "Email diperlukan untuk mencetak PDF." });
+      }
+      const accessCheck = verifyUserAccess(data.email, [ROLE_PENGESYOR, ROLE_ADMIN, ROLE_PELULUS]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ success: false, message: accessCheck.error });
+      }
       return handleCetakDanSimpanPDF(data);
     }
     
@@ -347,14 +480,32 @@ function doPost(e) {
 
     // ============================================================
     // LOGIK UTAMA: EDIT / KEMASKINI ROW (BERDASARKAN PARAMETER row)
+    // V6.5.0: Menambah pengesahan untuk update record
     // ============================================================
     if (data.row && parseInt(data.row) > 1) {
+      // Pengesahan untuk kemaskini rekod
+      if (!data.email) {
+        return createJSONOutput({ status: "error", message: "Email diperlukan untuk mengemaskini rekod." });
+      }
+      const accessCheck = verifyUserAccess(data.email, [ROLE_PENGESYOR, ROLE_ADMIN, ROLE_PELULUS]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ status: "error", message: accessCheck.error });
+      }
       return handleUpdateRecord(data, sheet);
     } 
     // ============================================================
     // LOGIK UTAMA: TAMBAH REKOD BARU (JIKA TIADA data.row)
+    // V6.5.0: Menambah pengesahan untuk insert record
     // ============================================================
     else {
+      // Pengesahan untuk tambah rekod baru
+      if (!data.email) {
+        return createJSONOutput({ status: "error", message: "Email diperlukan untuk menambah rekod." });
+      }
+      const accessCheck = verifyUserAccess(data.email, [ROLE_PENGESYOR, ROLE_ADMIN]);
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ status: "error", message: accessCheck.error });
+      }
       return handleInsertNewRecord(data, sheet, shouldCreateFolder);
     }
     
@@ -379,6 +530,7 @@ function doPost(e) {
 
 // =========================================================================
 // V6.4.8: FUNGSI HANDLER AI PROCESSING (BACKEND)
+// V6.5.0: Pengesahan dilakukan di doPost sebelum memanggil fungsi ini
 // =========================================================================
 
 /**
@@ -398,13 +550,13 @@ function handleProcessAI(data) {
       });
     }
     
-    Logger.log(`[V6.4.8] AI Processing diminta untuk jenis: ${promptType}, panjang teks: ${pdfText.length}`);
+    Logger.log(`[V6.5.0] AI Processing diminta untuk jenis: ${promptType}, panjang teks: ${pdfText.length}`);
 
     // Panggil fungsi processWithAI dengan 3-Tier Fallback
     const result = processWithAI(pdfText, promptType);
 
     if (result.success && result.data) {
-      Logger.log(`[V6.4.8] AI Processing berjaya untuk ${promptType}`);
+      Logger.log(`[V6.5.0] AI Processing berjaya untuk ${promptType}`);
 
       return createJSONOutput({
         success: true,
@@ -414,7 +566,7 @@ function handleProcessAI(data) {
       });
 
     } else {
-      Logger.log(`[V6.4.8] AI Processing gagal: ${result.error}`);
+      Logger.log(`[V6.5.0] AI Processing gagal: ${result.error}`);
 
       return createJSONOutput({
         success: false,
@@ -425,7 +577,7 @@ function handleProcessAI(data) {
     }
     
   } catch (error) {
-    Logger.log(`[V6.4.8] Ralat dalam handleProcessAI: ${error.toString()}`);
+    Logger.log(`[V6.5.0] Ralat dalam handleProcessAI: ${error.toString()}`);
 
     return createJSONOutput({
       success: false,
@@ -459,7 +611,7 @@ function processWithAI(pdfText, promptType) {
 
   }
   
-  Logger.log(`[V6.4.8] 3-Tier Fallback: Mencuba DeepSeek...`);
+  Logger.log(`[V6.5.0] 3-Tier Fallback: Mencuba DeepSeek...`);
   
   // Tier 1: DeepSeek
   try {
@@ -469,7 +621,7 @@ function processWithAI(pdfText, promptType) {
       return { success: true, data: processedData, provider: 'DeepSeek', error: null };
     }
   } catch (error) {
-    Logger.log(`[V6.4.8] DeepSeek gagal: ${error.toString()}. Mencuba Gemini...`);
+    Logger.log(`[V6.5.0] DeepSeek gagal: ${error.toString()}. Mencuba Gemini...`);
   }
   
   // Tier 2: Gemini (Backup 1)
@@ -480,7 +632,7 @@ function processWithAI(pdfText, promptType) {
       return { success: true, data: processedData, provider: 'Gemini', error: null };
     }
   } catch (error) {
-    Logger.log(`[V6.4.8] Gemini gagal: ${error.toString()}. Mencuba OpenRouter...`);
+    Logger.log(`[V6.5.0] Gemini gagal: ${error.toString()}. Mencuba OpenRouter...`);
   }
   
   // Tier 3: OpenRouter (Backup 2)
@@ -491,7 +643,7 @@ function processWithAI(pdfText, promptType) {
       return { success: true, data: processedData, provider: 'OpenRouter', error: null };
     }
   } catch (error) {
-    Logger.log(`[V6.4.8] OpenRouter gagal: ${error.toString()}. Semua API gagal.`);
+    Logger.log(`[V6.5.0] OpenRouter gagal: ${error.toString()}. Semua API gagal.`);
   }
   
   // Jika semua gagal
@@ -941,7 +1093,7 @@ Sila ambil tindakan sewajarnya.
       ''
     );
 
-    console.log(`[V6.4.5] Email SPI${isPemutihan ? ' (PEMUTIHAN)' : ''} berjaya dihantar untuk ${syarikat} dari ${EMAIL_SENDER_NAME}`);
+    console.log(`[V6.5.0] Email SPI${isPemutihan ? ' (PEMUTIHAN)' : ''} berjaya dihantar untuk ${syarikat} dari ${EMAIL_SENDER_NAME}`);
 
     return { success: true, message: "Emel berjaya dihantar" };
     
@@ -954,7 +1106,7 @@ Sila ambil tindakan sewajarnya.
       ''
     );
 
-    console.error(`[V6.4.5] Error sending SPI email: ${error.toString()}`);
+    console.error(`[V6.5.0] Error sending SPI email: ${error.toString()}`);
     
     return { success: false, message: error.toString() };
   }
@@ -1177,9 +1329,9 @@ function handleUpdateRecord(data, sheet) {
 
       try {
         addToSiasatQueue(emailData);
-        console.log(`[V6.5.2] SPI SIASAT queued for daily 10AM for row ${rowNum}: ${emailData.syarikat}`);
+        console.log(`[V6.5.0] SPI SIASAT queued for daily 10AM for row ${rowNum}: ${emailData.syarikat}`);
       } catch (queueError) {
-        console.error(`[V6.5.2] Failed to queue SPI SIASAT on update: ${queueError.toString()}`);
+        console.error(`[V6.5.0] Failed to queue SPI SIASAT on update: ${queueError.toString()}`);
       }
     }
     
@@ -1206,9 +1358,9 @@ function handleUpdateRecord(data, sheet) {
 
       try {
         addToPemutihanQueue(emailDataPemutihan);
-        console.log(`[V6.5.2] SPI PEMUTIHAN queued for Friday 11AM for row ${rowNum}: ${emailDataPemutihan.syarikat}`);
+        console.log(`[V6.5.0] SPI PEMUTIHAN queued for Friday 11AM for row ${rowNum}: ${emailDataPemutihan.syarikat}`);
       } catch (queueError) {
-        console.error(`[V6.5.2] Failed to queue SPI PEMUTIHAN on update: ${queueError.toString()}`);
+        console.error(`[V6.5.0] Failed to queue SPI PEMUTIHAN on update: ${queueError.toString()}`);
       }
     }
     
@@ -1337,9 +1489,9 @@ function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
 
       try {
         addToSiasatQueue(emailData);
-        console.log(`[V6.5.2] SPI SIASAT queued for daily 10AM on insert for row ${targetRow}: ${emailData.syarikat}`);
+        console.log(`[V6.5.0] SPI SIASAT queued for daily 10AM on insert for row ${targetRow}: ${emailData.syarikat}`);
       } catch (queueError) {
-        console.error(`[V6.5.2] Failed to queue SPI SIASAT on insert: ${queueError.toString()}`);
+        console.error(`[V6.5.0] Failed to queue SPI SIASAT on insert: ${queueError.toString()}`);
       }
     }
     
@@ -1355,20 +1507,61 @@ function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
 
 /**
  * Fungsi untuk mengendalikan padam rekod
+ * V6.5.0: Menambah perlindungan ketat - hanya pemohon asal (pengesyor) atau ADMIN boleh padam_semua
  */
 function handleDeleteRecord(data, sheet) {
   try {
     const userName = data.user || "System";
     const rowNum = parseInt(data.row);
     const deleteType = data.deleteType;
+    const email = data.email || '';
     
     if (!rowNum || rowNum < 2) return createJSONOutput({ status: "error", message: "Baris tidak sah" });
     
     if (deleteType === 'padam_semua') {
+      // V6.5.0: PERLINDUNGAN KETAT - Hanya ADMIN atau pengesyor asal yang boleh padam semua
+      
+      // Dapatkan data sedia ada pada baris tersebut
+      const existingDataRange = sheet.getRange(rowNum, 1, 1, TOTAL_COLUMNS);
+      const existingData = existingDataRange.getValues()[0];
+      const existingPengesyor = existingData[12] ? existingData[12].toString().trim() : '';
+      
+      // Semak jika pengguna adalah ADMIN atau pengesyor asal
+      if (!email) {
+        return createJSONOutput({ 
+          status: "error", 
+          message: "Akses Ditolak: Pengesahan emel diperlukan untuk padam rekod." 
+        });
+      }
+      
+      const accessCheck = verifyUserAccess(email, [ROLE_ADMIN, ROLE_PENGESYOR]);
+      
+      if (!accessCheck.isAuthorized) {
+        return createJSONOutput({ 
+          status: "error", 
+          message: "Akses Ditolak: Hanya ADMIN atau PENGESYOR yang boleh memadam rekod." 
+        });
+      }
+      
+      // Jika role PENGESYOR, semak sama ada dia adalah pengesyor asal
+      if (accessCheck.userProfile.role === ROLE_PENGESYOR) {
+        const userEmail = accessCheck.userProfile.email.toLowerCase();
+        const pengesyorUser = findUserByEmail(userEmail);
+        
+        if (!pengesyorUser || pengesyorUser.name.toUpperCase() !== existingPengesyor.toUpperCase()) {
+          return createJSONOutput({ 
+            status: "error", 
+            message: `Akses Ditolak: Anda (${pengesyorUser ? pengesyorUser.name : email}) bukan pengesyor asal (${existingPengesyor}) untuk rekod ini. Hanya pengesyor asal atau ADMIN boleh memadam rekod.` 
+          });
+        }
+      }
+      
       sheet.deleteRow(rowNum);
       logActivity(userName, 'DELETE_RECORD', `Rekod dipadam sepenuhnya di baris ${rowNum}`, '');
       return createJSONOutput({ status: "success", message: "Rekod berjaya dipadam sepenuhnya", action: "deleted_full" });
+      
     } else if (deleteType === 'padam_syor') {
+      // Untuk padam syor, mana-mana pengguna yang dibenarkan boleh lakukan
       const rangeToClear = sheet.getRange(rowNum, 13, 1, 3);
       rangeToClear.clearContent();
       logActivity(userName, 'CLEAR_RECOMMENDATION', `Syor dikosongkan di baris ${rowNum}`, '');
@@ -1651,7 +1844,7 @@ function handleCreateDriveFolderAction(data) {
     let typeFolder = findFolderInParent(companyFolder, appType);
     if (!typeFolder) typeFolder = companyFolder.createFolder(appType);
     
-    logActivity(userName, 'CREATE_FOLDER_USER', `Folder dicipta (V6.4.5): ${companyName} > ${appType}`, typeFolder.getId());
+    logActivity(userName, 'CREATE_FOLDER_USER', `Folder dicipta (V6.5.0): ${companyName} > ${appType}`, typeFolder.getId());
 
     return createJSONOutput({ success: true, folder_url: typeFolder.getUrl(), folder_id: typeFolder.getId(), folder_path: `${MAIN_FOLDER_NAME} > ${userName} > ${companyName} > ${appType}`, user_folder_url: userFolder.getUrl(), message: `Folder berjaya dicipta` });
   } catch (err) {
@@ -1698,6 +1891,13 @@ function testCheckAuth() {
   const testEmail = "pengesyor@kuskop.gov.my";
   const result = handleCheckAuth(testEmail);
   console.log(result.getContent());
+  return result;
+}
+
+function testVerifyUserAccess() {
+  const testEmail = "pengesyor@kuskop.gov.my";
+  const result = verifyUserAccess(testEmail, [ROLE_PENGESYOR, ROLE_ADMIN]);
+  console.log(JSON.stringify(result));
   return result;
 }
 
@@ -1757,7 +1957,7 @@ function testProcessAI() {
 function testSendEmailPermission() {
   try {
     const userEmail = Session.getActiveUser().getEmail();
-    MailApp.sendEmail({ to: userEmail, subject: "Test Permission V6.4.5", body: "Test sahaja.", name: EMAIL_SENDER_NAME });
+    MailApp.sendEmail({ to: userEmail, subject: "Test Permission V6.5.0", body: "Test sahaja.", name: EMAIL_SENDER_NAME });
     return createJSONOutput({ success: true, message: `Emel ujian berjaya dihantar ke ${userEmail} dari ${EMAIL_SENDER_NAME}.` });
   } catch (error) {
     return createJSONOutput({ success: false, message: `Gagal menghantar emel ujian: ${error.toString()}` });
@@ -1775,6 +1975,12 @@ function testCheckAuthWithEmail() {
   const testEmail1 = "pengesyor@kuskop.gov.my";
   const result1 = handleCheckAuth(testEmail1);
   console.log(result1.getContent());
+  
+  // Test untuk PENGESYOR dengan Firebase code
+  const testEmail2 = "zariff.zainudin@kuskop.gov.my";
+  const result2 = handleCheckAuth(testEmail2);
+  console.log(result2.getContent());
+  
   return "All tests completed";
 }
 
@@ -1854,7 +2060,7 @@ function processPemutihanQueue() {
     </div>
     <div class="content">
       <p>Tuan/Puan,</p>
-      <p>Berikut adalah senarai <strong>${queue.length} permohonan lawatan (PEMUTIHAN)</strong> yang telah disyorkan dikumpul dalam tempoh 2 minggu ini. Sila ambil tindakan sewajarnya.</p>
+      <p>Berikut adalah senarai <strong>${queue.length} permohonan lawatan premis (PEMUTIHAN)</strong> yang telah disyorkan dikumpul dalam tempoh 2 minggu ini. Sila ambil tindakan sewajarnya.</p>
       <table style="width:100%; border-collapse:collapse; margin: 20px 0; background:white;">
         <thead style="background:#f1f5f9; color:#1e293b;">
           <tr>
@@ -1870,7 +2076,7 @@ function processPemutihanQueue() {
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
-      <p style="margin-top: 20px;"><em>*** Emel ini dijana secara automatik setiap hari Jumaat jam 11:00 Pagi (Setiap 2 Minggu). Sila jangan balas emel ini. ***</em></p>
+      <p style="margin-top: 20px;"><em>*** Emel ini dijana secara automatik setiap hari Jumaat (Setiap 2 Minggu). Sila jangan balas emel ini. ***</em></p>
     </div>
     <div class="footer">
       <p>Sistem Bersepadu SPTB<br>© ${new Date().getFullYear()} PKK. Hak Cipta Terpelihara.</p>
@@ -1885,9 +2091,8 @@ function processPemutihanQueue() {
   try {
     MailApp.sendEmail({ to: EMAIL_TO_SPI, cc: EMAIL_CC_SPTB, subject: subject, htmlBody: htmlBody, body: plainBody, name: EMAIL_SENDER_NAME });
     
-    // === TAMBAH KOD INI DI SINI ===
+    // Update SPI status dalam sheet
     updateSPIStatusInSheet(queue);
-    // =============================
     
     props.deleteProperty('PEMUTIHAN_QUEUE');
     logActivity('System', 'BATCH_EMAIL_PEMUTIHAN', `Berjaya menghantar emel pukal dwi-mingguan pemutihan untuk ${queue.length} syarikat.`, '');
@@ -1961,7 +2166,7 @@ function processSiasatQueue() {
     textList += `${index + 1}. ${data.syarikat}\n   CIDB: ${data.cidb} | Gred: ${data.gred} | Pengesyor: ${data.pengesyor}\n   Alamat Perniagaan: ${data.alamat_perniagaan || 'Tiada'}\n   Justifikasi: ${data.justifikasi || 'Tiada'}\n\n`;
   });
 
-  const subject = `Makluman Harian: ${queue.length} Permohonan Lawatan Premis (Siasat Biasa)`;
+  const subject = `Makluman Harian: ${queue.length} Permohonan Lawatan Premis SPI`;
   const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -1977,12 +2182,12 @@ function processSiasatQueue() {
 <body>
   <div class="container">
     <div class="header">
-      <h2 style="margin: 0;">📋 MAKLUMAN HARIAN (SIASAT BIASA)</h2>
+      <h2 style="margin: 0;">📋 MAKLUMAN HARIAN (LAWATAN PREMIS SPI)</h2>
       <p style="margin: 5px 0 0 0;">Sistem Bersepadu SPTB</p>
     </div>
     <div class="content">
       <p>Tuan/Puan,</p>
-      <p>Berikut adalah senarai <strong>${queue.length} permohonan lawatan (SIASAT BIASA)</strong> yang telah disyorkan. Sila ambil tindakan sewajarnya.</p>
+      <p>Berikut adalah senarai <strong>${queue.length} permohonan lawatan premis SPI </strong> yang telah disyorkan. Sila ambil tindakan sewajarnya.</p>
       <table style="width:100%; border-collapse:collapse; margin: 20px 0; background:white;">
         <thead style="background:#f1f5f9; color:#1e293b;">
           <tr>
@@ -1998,7 +2203,7 @@ function processSiasatQueue() {
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
-      <p style="margin-top: 20px;"><em>*** Emel ini dijana secara automatik setiap hari bekerja jam 10:00 Pagi. Sila jangan balas emel ini. ***</em></p>
+      <p style="margin-top: 20px;"><em>*** Emel ini dijana secara automatik setiap hari bekerja. Sila jangan balas emel ini. ***</em></p>
     </div>
     <div class="footer">
       <p>Sistem Bersepadu SPTB<br>© ${new Date().getFullYear()} PKK. Hak Cipta Terpelihara.</p>
@@ -2013,9 +2218,8 @@ function processSiasatQueue() {
   try {
     MailApp.sendEmail({ to: EMAIL_TO_SPI, cc: EMAIL_CC_SPTB, subject: subject, htmlBody: htmlBody, body: plainBody, name: EMAIL_SENDER_NAME });
     
-    // === TAMBAH KOD INI DI SINI ===
+    // Update SPI status dalam sheet
     updateSPIStatusInSheet(queue);
-    // =============================
     
     props.deleteProperty('SIASAT_QUEUE');
     logActivity('System', 'BATCH_EMAIL_SIASAT', `Berjaya menghantar emel harian siasat untuk ${queue.length} syarikat.`, '');
