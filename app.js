@@ -8712,8 +8712,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const dbSyorStatusValue = document.getElementById('db_syor_status')?.value || '';
       const dbStartDateValue = document.getElementById('db_start_date')?.value || document.getElementById('borang_tarikh_mohon')?.value || '';
       
-      let confirmHantarEmel = false;
-      
       // === LOGIK BARU SEMAKAN HANTAR SPI ===
       const dbStatusHantarSpi = document.getElementById('db_status_hantar_spi')?.value || '';
       
