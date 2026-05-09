@@ -335,7 +335,7 @@ function doGet(e) {
       if (!email) {
         return createJSONOutput({ status: "error", message: "Email diperlukan untuk akses queue data." });
       }
-      const accessCheck = verifyUserAccess(email, [ROLE_ADMIN]);
+      const accessCheck = verifyUserAccess(email, [ROLE_ADMIN, ROLE_PENGESYOR, ROLE_PELULUS]);
       if (!accessCheck.isAuthorized) {
         return createJSONOutput({ status: "error", message: accessCheck.error });
       }

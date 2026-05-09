@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let bakulUnsubscribe = null;
 
   // URL APPSCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRYmIpS-g2ras8y4AfxFGZ4pzRT8PKe_YR9tCKtONPqJe3vbIPgCXNIN3HxDFVBb9p/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2jxw-6EjxyRTercG1jlpFrlk718EEimDrbgx1Hyl40pFqfz2xSoubTUhX58rsMMta/exec';
   
   // Google Client ID
   const GOOGLE_CLIENT_ID = '758579492428-rnfev1nkkf2e6qduhujgtfbhudl2j9td.apps.googleusercontent.com';
@@ -3668,6 +3668,7 @@ async function handleCredentialResponse(response) {
       action: 'processAI',
       type: 'borang',
       text: truncatedText
+      email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
     };
 
     const response = await fetchWithRetry(SCRIPT_URL, {
@@ -4410,6 +4411,7 @@ async function handleCredentialResponse(response) {
       action: 'processAI',
       type: 'profile',
       text: truncatedText
+      email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
     };
 
     const response = await fetchWithRetry(SCRIPT_URL, {
@@ -5385,6 +5387,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         user_color: userColorHex,
         main_folder_id: mainFolderId,
         htmlContent: printHTML
+        email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
       };
       
       try {
@@ -6973,6 +6976,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       application_type: subfolderName,
       user_name: userName,
       main_folder_id: mainFolderId
+      email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
     };
 
     try {
@@ -7910,6 +7914,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         row: item.row,
         syor_status: '',
         tarikh_syor: '',
+        email: currentUser ? currentUser.email : '', // <-- TAMBAH INI
         ...item
       };
       payload.syor_status = '';
@@ -7925,6 +7930,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         alasan: '',
         tarikh_lulus: '',
         pelulus: '',
+        email: currentUser ? currentUser.email : '', // <-- TAMBAH INI
         ...item
       };
       payload.kelulusan = '';
@@ -7938,6 +7944,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         row: item.row,
         deleteType: action,
         user: currentUser.name
+        email: currentUser ? currentUser.email : '', // <-- TAMBAH INI
       };
     }
     
@@ -8785,6 +8792,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         hantar_emel_spi: confirmHantarEmel,
         ubah_maklumat: ubahMaklumatVal,
         ubah_gred: ubahGredVal
+        email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
       };
       
       if (isConfirmed) {
@@ -9000,6 +9008,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         justifikasi_baru: justifikasiPelulus,
         date_submit_baru: dateSpiPelulus,
         hantar_emel_spi_pemutihan: confirmSpiPemutihan
+        email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
       };
       
       // 7. Hantar data ke pelayan (server)
@@ -10327,7 +10336,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           );
           
           try {
-              const response = await fetchWithRetry(SCRIPT_URL + '?action=getQueueData&t=' + Date.now(), { method: 'GET' }, 3, 1000);
+              const userEmail = currentUser ? encodeURIComponent(currentUser.email) : '';
+              const response = await fetchWithRetry(SCRIPT_URL + `?action=getQueueData&email=${userEmail}&t=` + Date.now(), { method: 'GET' }, 3, 1000);
               const result = await response.json();
               
               // 2. Set progress ke 100% dan tunjuk mesej Selesai sebelum tutup
