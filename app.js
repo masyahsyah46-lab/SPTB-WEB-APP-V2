@@ -6241,10 +6241,19 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     appContainer.style.display = 'block';
     
     if (anonymousBadge) anonymousBadge.style.display = 'none';
+    
+    // KEMASKINI: Pastikan fungsi klik YouTube dipasang setiap kali UI dimuatkan (termasuk selepas refresh)
     userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
+    userBadge.title = "Buka Portal YouTube";
+    userBadge.style.cursor = "pointer";
+    userBadge.onclick = function() {
+        if (lastActiveTab !== 'youtube') {
+            window.tabSebelumYoutube = lastActiveTab; 
+        }
+        switchTab('youtube');
+    };
     
     let themeColor = getUserColorHex(currentUser.color);
-    document.documentElement.style.setProperty('--theme-color', themeColor);
     
     // Inisialkan aplikasi berdasarkan peranan
     if (!isAppReady) {
