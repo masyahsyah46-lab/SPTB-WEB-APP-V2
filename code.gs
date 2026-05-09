@@ -24,6 +24,11 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "tencent/hy3-preview:free";
 
 // =========================================================================
+// YOUTUBE API KEY (Disimpan di pelayan untuk keselamatan)
+// =========================================================================
+const YOUTUBE_API_KEY = "AIzaSyA9ROLuQPwVtUYhnA6uInSTF2kjk7SdSMM";
+
+// =========================================================================
 // V6.5.0: FIREBASE PENGESYOR MAP - KOD RAHSIA DISIMPAN DI BACKEND
 // =========================================================================
 const FIREBASE_PENGESYOR_MAP = {
@@ -412,6 +417,13 @@ function doPost(e) {
     }
     
     // =====================================================================
+    // HANDLER UNTUK YOUTUBE CUSTOM PLAYER
+    // =====================================================================
+    if (data.action === 'searchYoutube') {
+      return handleSearchYoutube(data.query);
+    }
+    
+    // =====================================================================
     // V6.5.0: PENGESAHAN UNTUK SEMUA TINDAKAN KRITIKAL
     // =====================================================================
     
@@ -525,6 +537,31 @@ function doPost(e) {
     if (locked) {
       lock.releaseLock();
     }
+  }
+}
+
+// =========================================================================
+// FUNGSI YOUTUBE CUSTOM PLAYER
+// =========================================================================
+
+/**
+ * Fungsi handleSearchYoutube: Mencari video YouTube berdasarkan query
+ * @param {string} query - Kata kunci carian
+ * @returns {ContentService.TextOutput} - Respons JSON dengan hasil carian
+ */
+function handleSearchYoutube(query) {
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`;
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    const result = JSON.parse(response.getContentText());
+
+    if (response.getResponseCode() !== 200) {
+      return createJSONOutput({ success: false, message: result.error.message || "Ralat API YouTube" });
+    }
+
+    return createJSONOutput({ success: true, data: result.items });
+  } catch (error) {
+    return createJSONOutput({ success: false, message: error.toString() });
   }
 }
 
@@ -1995,6 +2032,12 @@ function testDoPostCheckAuth() {
   const payload = { action: "checkAuth", email: "pengesyor@kuskop.gov.my" };
   const e = { postData: { contents: JSON.stringify(payload) } };
   const result = doPost(e);
+  console.log(result.getContent());
+  return result;
+}
+
+function testSearchYoutube() {
+  const result = handleSearchYoutube("tutorial google apps script");
   console.log(result.getContent());
   return result;
 }

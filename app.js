@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let bakulUnsubscribe = null;
 
   // URL APPSCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2jxw-6EjxyRTercG1jlpFrlk718EEimDrbgx1Hyl40pFqfz2xSoubTUhX58rsMMta/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby61IHDvSw1f3Oa0dZdiwR3hmthR8QW5FBMuuVeoqYov_ogeIlEvuhdeIBDO5rDi7j_/exec';
   
   // Google Client ID
   const GOOGLE_CLIENT_ID = '758579492428-rnfev1nkkf2e6qduhujgtfbhudl2j9td.apps.googleusercontent.com';
@@ -164,18 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let dashboardKonsultansiChart = null;
   
   // =========================================================================
-  // V6.4.8: AUDIO & VOLUME CONTROL SYSTEM (WEB APP HTML5 AUDIO)
+  // V6.5.2: AUDIO CONTROL SYSTEM (SFX ONLY)
   // =========================================================================
   
-  let isMusicPlaying = false;
-  let bgmVolume = 0.5; // Default BGM volume: 50%
   let sfxVolume = 0.7; // Default SFX volume: 70%
   
   // DOM Elements for Audio Controls
-  const btnToggleMusic = document.getElementById('btnToggleMusic');
-  const bgmVolumeSlider = document.getElementById('bgmVolumeSlider');
   const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
-  const bgmVolumeValue = document.getElementById('bgmVolumeValue');
   const sfxVolumeValue = document.getElementById('sfxVolumeValue');
 
   // =========================================================================
@@ -186,20 +181,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuOverlay = document.getElementById('menuOverlay');
   const anonymousBadge = document.getElementById('anonymousBadge');
 
-  // Setup BGM Audio Element
-  const playlist = ['audio/lagu1.mp3', 'audio/lagu2.mp3', 'audio/lagu3.mp3'];
-  let currentTrackIndex = 0;
-  const bgmAudioElement = new Audio();
-  bgmAudioElement.src = playlist[currentTrackIndex];
-  bgmAudioElement.addEventListener('ended', () => {
-      currentTrackIndex++;
-      if (currentTrackIndex >= playlist.length) {
-          currentTrackIndex = 0;
-      }
-      bgmAudioElement.src = playlist[currentTrackIndex];
-      bgmAudioElement.play().catch(e => console.error('Gagal memainkan lagu seterusnya:', e));
-  });
-  
+  // =========================================================================
+  // V6.5.2 AUDIO & VOLUME CONTROL SYSTEM (SFX ONLY)
+  // =========================================================================
+
+  let sfxVolume = 0.7; // Default SFX volume: 70%
+
+  // DOM Elements for Audio Controls
+  const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
+  const sfxVolumeValue = document.getElementById('sfxVolumeValue');
+
   async function playSoundEffect(soundFile) {
     try {
       let fileName = soundFile;
@@ -216,57 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error(`V6.5.2 (Web) Failed to play sound effect (${soundFile}):`, error);
     }
   }
-  
-  async function playBackgroundMusic() {
-    try {
-      bgmAudioElement.volume = bgmVolume;
-      await bgmAudioElement.play();
-      isMusicPlaying = true;
-      updateMusicButtonState(true);
-      console.log("V6.5.2 (Web) Muzik mula dimainkan");
-    } catch (error) {
-      console.error("V6.5.2 (Web) Gagal memainkan muzik:", error);
-      isMusicPlaying = false;
-      updateMusicButtonState(false);
-    }
-  }
-  
-  async function pauseBackgroundMusic() {
-    try {
-      bgmAudioElement.pause();
-      isMusicPlaying = false;
-      updateMusicButtonState(false);
-      console.log("V6.5.2 (Web) Muzik dijeda");
-    } catch (error) {
-      console.error("V6.5.2 (Web) Gagal menjeda muzik:", error);
-      isMusicPlaying = true;
-      updateMusicButtonState(true);
-    }
-  }
-  
-  async function toggleBackgroundMusic() {
-    if (isMusicPlaying) {
-      await pauseBackgroundMusic();
-    } else {
-      await playBackgroundMusic();
-    }
-  }
-  
-  async function updateBgmVolume(newVolume) {
-    try {
-      bgmVolume = newVolume;
-      bgmAudioElement.volume = bgmVolume;
-      
-      if (bgmVolumeValue) {
-        bgmVolumeValue.textContent = Math.round(bgmVolume * 100) + '%';
-      }
-      
-      console.log(`V6.5.2 (Web) BGM volume updated to ${Math.round(bgmVolume * 100)}%`);
-    } catch (error) {
-      console.error("V6.5.2 (Web) Failed to update BGM volume:", error);
-    }
-  }
-  
+    
   async function updateSfxVolume(newVolume) {
     try {
       sfxVolume = newVolume;
@@ -275,59 +216,17 @@ document.addEventListener('DOMContentLoaded', () => {
         sfxVolumeValue.textContent = Math.round(sfxVolume * 100) + '%';
       }
       
+      // Simpan tetapan volume SFX ke dalam local storage
+      storageWrapper.set({ 'stb_sfx_volume': sfxVolume });
+      
       console.log(`V6.5.2 (Web) SFX volume updated to ${Math.round(sfxVolume * 100)}%`);
     } catch (error) {
       console.error("V6.5.2 (Web) Failed to update SFX volume:", error);
     }
   }
-  
-  function updateMusicButtonState(playing) {
-    isMusicPlaying = playing;
     
-    if (!btnToggleMusic) return;
-    
-    try {
-      if (playing) {
-        btnToggleMusic.innerHTML = '🔊 Jeda Muzik';
-        btnToggleMusic.title = 'Klik untuk jeda muzik latar belakang';
-        btnToggleMusic.classList.add('music-playing');
-        btnToggleMusic.classList.remove('music-paused');
-      } else {
-        btnToggleMusic.innerHTML = '🔇 Main Muzik';
-        btnToggleMusic.title = 'Klik untuk main muzik latar belakang';
-        btnToggleMusic.classList.add('music-paused');
-        btnToggleMusic.classList.remove('music-playing');
-      }
-      
-      storageWrapper.set({ 
-        'stb_music_playing': isMusicPlaying,
-        'stb_bgm_volume': bgmVolume,
-        'stb_sfx_volume': sfxVolume
-      });
-    } catch (error) {
-      console.error("V6.5.2 Error updating music button state:", error);
-    }
-  }
-  
   function setupAudioControls() {
-    if (btnToggleMusic) {
-      btnToggleMusic.addEventListener('click', async () => {
-        await toggleBackgroundMusic();
-        await playSoundEffect('ui_click.mp3');
-      });
-    }
-    
-    if (bgmVolumeSlider) {
-      bgmVolumeSlider.addEventListener('change', async (e) => {
-        const newVolume = parseFloat(e.target.value);
-        await updateBgmVolume(newVolume);
-      });
-      bgmVolumeSlider.value = bgmVolume;
-      if (bgmVolumeValue) {
-        bgmVolumeValue.textContent = Math.round(bgmVolume * 100) + '%';
-      }
-    }
-    
+    // HANYA KEKALKAN KAWALAN SFX SAHAJA
     if (sfxVolumeSlider) {
       sfxVolumeSlider.addEventListener('change', async (e) => {
         const newVolume = parseFloat(e.target.value);
@@ -339,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
-    console.log("V6.5.2 Audio controls setup completed");
+    console.log("V6.5.2 Audio controls (SFX Only) setup completed");
   }
   
   function setupGlobalButtonClickSound() {
@@ -347,13 +246,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = e.target.closest('button, .btn, [role="button"], .tab-btn, .tick-btn, .filter-btn');
       
       if (target) {
-        if (target === btnToggleMusic) return;
+        // Mainkan bunyi tanpa perlu check btnToggleMusic lagi
         await playSoundEffect('ui_click.mp3');
       }
     }, true);
     console.log("V6.5.2 Global button click sound setup completed");
-  }
-  
+  }  
   // =========================================================================
   // MOBILE MENU LOGIC
   // =========================================================================
@@ -554,10 +452,16 @@ async function handleCredentialResponse(response) {
       
       // Update maklumat profil pengguna
       if (userBadge) {
-        userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
-        const themeColor = getUserColorHex(currentUser.color);
-        document.documentElement.style.setProperty('--theme-color', themeColor);
-      }
+    userBadge.innerText = `👤 ${currentUser.name} (${currentUser.role})`;
+    userBadge.title = "Buka Portal YouTube";
+    userBadge.style.cursor = "pointer";
+    userBadge.onclick = function() {
+        if (lastActiveTab !== 'youtube') {
+            window.tabSebelumYoutube = lastActiveTab; 
+        }
+        switchTab('youtube');
+    };
+  }
 
       // Biarkan bar peratusan berjalan sehingga tamat untuk "User Experience" yang premium
       setTimeout(() => {
@@ -6454,8 +6358,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         <button class="tab-btn" data-target="stb"><span class="tab-icon">✓</span><span class="tab-text">Borang Semakan</span></button>
         <button class="tab-btn" data-target="db"><span class="tab-icon">📂</span><span class="tab-text">Input Database</span></button>
         <button class="tab-btn" data-target="drafts"><span class="tab-icon">📋</span><span class="tab-text">Belum Hantar</span></button>
-        <button class="tab-btn" data-target="submitted"><span class="tab-icon">✅</span><span class="tab-text">Telah Disyor</span></button>
-        ${showProfileTab ? '<button class="tab-btn" data-target="profile"><span class="tab-icon">🏢</span><span class="tab-text">Cipta Profile Syarikat</span></button>' : ''}
       `;
       
       const nameField = document.getElementById('db_pengesyor');
@@ -6502,7 +6404,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     } else if (currentUser.role === 'ADMIN') {
       tabsContainer.innerHTML = `
         <button class="tab-btn" data-target="admin-dashboard"><span class="tab-icon">👑</span><span class="tab-text">Admin Dashboard</span></button>
-        ${showProfileTab ? '<button class="tab-btn" data-target="profile"><span class="tab-icon">🏢</span><span class="tab-text">Cipta Profile Syarikat</span></button>' : ''}
       `;
       
       const nameField = document.getElementById('db_pengesyor');
@@ -6738,6 +6639,16 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       setTimeout(() => {
         restoreActiveElement();
       }, 200);
+    }
+    // =========================================================
+    // TAMBAH KOD YOUTUBE DI SINI SUPAYA SEMUA ROLE BOLEH AKSES
+    // =========================================================
+    else if (tabName === 'youtube') {
+      const tabYoutube = document.getElementById('tab-youtube');
+      if (tabYoutube) {
+        tabYoutube.style.display = 'block';
+        tabYoutube.classList.add('active');
+      }
     }
     // =========================================================
     // KOD BARU DITAMBAH DI SINI (UNTUK TAPISAN & BAKUL)
@@ -10404,6 +10315,98 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               <td style="text-align:center; font-size: 0.85rem;">${item.pengesyor}</td>
           </tr>
       `).join('');
+  }
+  // =========================================================================
+  // KAWALAN KEMBALI KE DB DARI PROFILE
+  // =========================================================================
+  const btnKembaliDbDariProfile = document.getElementById('btnKembaliDbDariProfile');
+  if (btnKembaliDbDariProfile) {
+      btnKembaliDbDariProfile.addEventListener('click', () => {
+          switchTab('db');
+      });
+  }
+
+  // =========================================================================
+  // ENJIN CUSTOM YOUTUBE PLAYER & KEMBALI
+  // =========================================================================
+  const btnTutupYoutube = document.getElementById('btnTutupYoutube');
+  if (btnTutupYoutube) {
+      btnTutupYoutube.addEventListener('click', () => {
+          let tabUtama = window.tabSebelumYoutube;
+          if (!tabUtama) {
+              tabUtama = ['ADMIN', 'PENGARAH', 'KETUA SEKSYEN'].includes(currentUser.role) ? 'admin-dashboard' : 'dashboard';
+          }
+          switchTab(tabUtama);
+      });
+  }
+
+  const btnSearchYoutube = document.getElementById('btnSearchYoutube');
+  const youtubeSearchInput = document.getElementById('youtubeSearchInput');
+
+  if (btnSearchYoutube) btnSearchYoutube.addEventListener('click', performYoutubeSearch);
+  if (youtubeSearchInput) {
+      youtubeSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performYoutubeSearch(); });
+  }
+
+  async function performYoutubeSearch() {
+      const query = youtubeSearchInput.value.trim();
+      if (!query) return;
+
+      simulateLoadingWithSteps(['Mencari di YouTube...', 'Memuatkan video...'], 'Mencari Video');
+
+      try {
+          const response = await fetchWithRetry(SCRIPT_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'searchYoutube', query: query })
+          }, 3, 1000);
+
+          const result = await response.json();
+          hideLoading();
+
+          if (result.success) {
+              displayYoutubeResults(result.data);
+          } else {
+              CustomAppModal.alert("Gagal cari video: " + result.message, "Ralat", "error");
+          }
+      } catch (error) {
+          hideLoading();
+          CustomAppModal.alert("Ralat sistem: " + error.message, "Ralat", "error");
+      }
+  }
+
+  function displayYoutubeResults(items) {
+      const container = document.getElementById('youtubeResults');
+      container.innerHTML = '';
+
+      if (!items || items.length === 0) {
+          container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #64748b;">Tiada video dijumpai.</div>';
+          return;
+      }
+
+      items.forEach(item => {
+          if (!item.id || !item.id.videoId) return;
+
+          const card = document.createElement('div');
+          card.style.cssText = "background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; cursor: pointer; transition: transform 0.2s;";
+          card.onmouseover = () => { card.style.transform = 'scale(1.02)'; };
+          card.onmouseout = () => { card.style.transform = 'scale(1)'; };
+          
+          card.innerHTML = `
+              <img src="${item.snippet.thumbnails.medium.url}" style="width:100%; border-radius:8px; margin-bottom:10px; aspect-ratio: 16/9; object-fit: cover;">
+              <h4 style="margin:0 0 5px 0; font-size:0.9rem; color:#1e40af;">${item.snippet.title}</h4>
+              <p style="margin:0; font-size:0.75rem; color:#64748b;">👤 ${item.snippet.channelTitle}</p>
+          `;
+
+          card.onclick = () => {
+              const pc = document.getElementById('youtubePlayerContainer');
+              const mp = document.getElementById('youtubeMainPlayer');
+              pc.style.display = 'block';
+              mp.src = `https://www.youtube.com/embed/${item.id.videoId}?autoplay=1`;
+              window.scrollTo({ top: pc.offsetTop - 50, behavior: 'smooth' });
+          };
+          container.appendChild(card);
+      });
   }
 
 }); // <--- PENUTUP UTAMA UNTUK DOMContentLoaded
