@@ -30,14 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error("Sistem Gagal Memuatkan Firebase. Sila semak fail index.html (CSP).");
   }
 
-  // Peta Emel ke Kod Rahsia Firebase
-  const pengesyorFirebaseMap = {
-      'zariff.zainudin@kuskop.gov.my': '0707',
-      'ilyanadia.azmi@kuskop.gov.my': '6166',
-      'norhamizi.hamdzah@kuskop.gov.my': '5757',
-      'khairulfitri.kamaruddin@kuskop.gov.my': '5381'
-  };
-
+  // Kod Rahsia Firebase kini diambil dari Backend (code.gs)
   let currentUserFirebaseCode = null;
   let firebaseUserRules = null; 
   let excelRawData = [];
@@ -46,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let bakulUnsubscribe = null;
 
   // URL APPSCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7ne6AKNUJWIjeYlkMbOc6aWvTnN9j2nuOIOO4G6c4ryALKUbEUwOPIcaB6oSfeWx0/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRYmIpS-g2ras8y4AfxFGZ4pzRT8PKe_YR9tCKtONPqJe3vbIPgCXNIN3HxDFVBb9p/exec';
   
   // Google Client ID
   const GOOGLE_CLIENT_ID = '758579492428-rnfev1nkkf2e6qduhujgtfbhudl2j9td.apps.googleusercontent.com';
@@ -532,7 +525,8 @@ async function handleCredentialResponse(response) {
 
       // KOD BARU: Sambungkan ke Firebase Bakul jika peranan adalah PENGESYOR
       if (currentUser.role === 'PENGESYOR') {
-          currentUserFirebaseCode = pengesyorFirebaseMap[currentUser.email];
+          // Kod kini datang secara langsung dari respons backend
+          currentUserFirebaseCode = result.user.firebaseCode || null; 
           if (currentUserFirebaseCode) {
               console.log("Menyambung ke Firebase Bakul dengan kod:", currentUserFirebaseCode);
               authFirebase.signInAnonymously().then(() => {
@@ -4837,7 +4831,8 @@ async function handleCredentialResponse(response) {
 
       // KOD BARU: Sambungkan semula ke Firebase Bakul secara automatik jika Pengesyor
       if (currentUser && currentUser.role === 'PENGESYOR' && currentUser.email) {
-          currentUserFirebaseCode = pengesyorFirebaseMap[currentUser.email];
+          // Ambil dari sesi yang tersimpan
+          currentUserFirebaseCode = currentUser.firebaseCode || null; 
           if (currentUserFirebaseCode) {
               authFirebase.signInAnonymously().then(() => {
                   dbFirestore.collection("users").doc(currentUserFirebaseCode).get().then(doc => {
@@ -7559,21 +7554,30 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     console.log("V6.5.2 Borang telah direset untuk edit.");
   }
 
+  // === PENAMBAHBAIKAN: DEBOUNCING UNTUK CARIAN LEBIH LANCAR ===
+  let searchTimeoutList;
   const searchInput = document.getElementById('searchListInput');
   if(searchInput) {
     searchInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      storageWrapper.set({ 'stb_search_state': val }); 
-      if(activeListType) renderFilteredList(activeListType);
+      clearTimeout(searchTimeoutList);
+      searchTimeoutList = setTimeout(() => {
+          const val = e.target.value;
+          storageWrapper.set({ 'stb_search_state': val }); 
+          if(activeListType) renderFilteredList(activeListType);
+      }, 350); // Sistem tunggu 350ms (lepas berhenti menaip) sebelum render
     });
   }
 
+  let searchTimeoutHistory;
   const searchHistoryInput = document.getElementById('searchHistoryInput');
   if(searchHistoryInput) {
     searchHistoryInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      storageWrapper.set({ 'stb_search_history_state': val }); 
-      if(activeListType) renderFilteredList(activeListType);
+      clearTimeout(searchTimeoutHistory);
+      searchTimeoutHistory = setTimeout(() => {
+          const val = e.target.value;
+          storageWrapper.set({ 'stb_search_history_state': val }); 
+          if(activeListType) renderFilteredList(activeListType);
+      }, 350);
     });
   }
 
@@ -10315,21 +10319,41 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   
   if (btnQueueSPI) {
       btnQueueSPI.addEventListener('click', async () => {
-          simulateLoading('Mendapatkan senarai queue...');
+          
+          // 1. Gunakan fungsi animasi berperingkat (0% - 100%)
+          simulateLoadingWithSteps(
+              ['Menyambung ke pelayan...', 'Menyemak Queue Siasatan Biasa...', 'Menyemak Queue Pemutihan...', 'Menyediakan paparan...'],
+              'Mendapatkan senarai queue SPI'
+          );
+          
           try {
               const response = await fetchWithRetry(SCRIPT_URL + '?action=getQueueData&t=' + Date.now(), { method: 'GET' }, 3, 1000);
               const result = await response.json();
-              hideLoading();
               
-              if (result.status === 'success') {
-                  populateQueueTable('tbodyQueueSiasat', result.siasat);
-                  populateQueueTable('tbodyQueuePemutihan', result.pemutihan);
+              // 2. Set progress ke 100% dan tunjuk mesej Selesai sebelum tutup
+              const progressBar = document.getElementById('loading-progress-bar');
+              const progressPercent = document.getElementById('loading-progress-percent');
+              const progressLabel = document.getElementById('loading-progress-label');
+              
+              if (progressBar) progressBar.style.width = '100%';
+              if (progressPercent) progressPercent.textContent = '100%';
+              if (progressLabel) progressLabel.textContent = 'Selesai!';
+              
+              // 3. Tunggu setengah saat (500ms) supaya pengguna nampak peratusan penuh 100%
+              setTimeout(() => {
+                  hideLoading();
                   
-                  queueSpiModal.classList.add('show');
-                  queueSpiModal.style.display = 'flex';
-              } else {
-                  CustomAppModal.alert('Gagal mendapatkan senarai queue.', 'Ralat', 'error');
-              }
+                  if (result.status === 'success') {
+                      populateQueueTable('tbodyQueueSiasat', result.siasat);
+                      populateQueueTable('tbodyQueuePemutihan', result.pemutihan);
+                      
+                      queueSpiModal.classList.add('show');
+                      queueSpiModal.style.display = 'flex';
+                  } else {
+                      CustomAppModal.alert('Gagal mendapatkan senarai queue.', 'Ralat', 'error');
+                  }
+              }, 500);
+              
           } catch (error) {
               hideLoading();
               CustomAppModal.alert('Gagal mendapatkan senarai queue: ' + error.message, 'Ralat', 'error');
