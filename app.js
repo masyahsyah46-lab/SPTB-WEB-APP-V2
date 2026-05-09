@@ -3667,7 +3667,7 @@ async function handleCredentialResponse(response) {
     const payload = {
       action: 'processAI',
       type: 'borang',
-      text: truncatedText
+      text: truncatedText,
       email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
     };
 
@@ -4410,7 +4410,7 @@ async function handleCredentialResponse(response) {
     const payload = {
       action: 'processAI',
       type: 'profile',
-      text: truncatedText
+      text: truncatedText,
       email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
     };
 
@@ -5386,7 +5386,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         user_name: userName,
         user_color: userColorHex,
         main_folder_id: mainFolderId,
-        htmlContent: printHTML
+        htmlContent: printHTML,
         email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
       };
       
@@ -6975,7 +6975,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       company_name: companyFolderName,
       application_type: subfolderName,
       user_name: userName,
-      main_folder_id: mainFolderId
+      main_folder_id: mainFolderId,
       email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
     };
 
@@ -7943,7 +7943,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         action: 'deleteRecord',
         row: item.row,
         deleteType: action,
-        user: currentUser.name
+        user: currentUser.name,
         email: currentUser ? currentUser.email : '', // <-- TAMBAH INI
       };
     }
@@ -8791,7 +8791,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         jenis_konsultansi: jenisKonsultansiString,
         hantar_emel_spi: confirmHantarEmel,
         ubah_maklumat: ubahMaklumatVal,
-        ubah_gred: ubahGredVal
+        ubah_gred: ubahGredVal,
         email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
       };
       
@@ -9007,7 +9007,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         syor_lawatan_baru: tukarSyor,
         justifikasi_baru: justifikasiPelulus,
         date_submit_baru: dateSpiPelulus,
-        hantar_emel_spi_pemutihan: confirmSpiPemutihan
+        hantar_emel_spi_pemutihan: confirmSpiPemutihan,
         email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
       };
       
