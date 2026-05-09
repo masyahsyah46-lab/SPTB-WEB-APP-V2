@@ -164,16 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let dashboardKonsultansiChart = null;
   
   // =========================================================================
-  // V6.5.2: AUDIO CONTROL SYSTEM (SFX ONLY)
-  // =========================================================================
-  
-  let sfxVolume = 0.7; // Default SFX volume: 70%
-  
-  // DOM Elements for Audio Controls
-  const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
-  const sfxVolumeValue = document.getElementById('sfxVolumeValue');
-
-  // =========================================================================
   // MOBILE MENU DOM ELEMENTS
   // =========================================================================
   const mobileMenuBtn = document.getElementById('mobileMenuBtn');
