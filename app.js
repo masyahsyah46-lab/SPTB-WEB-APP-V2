@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let bakulUnsubscribe = null;
 
   // URL APPSCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyt2brB8e7j167-iWUuRWIHA9oO49QMBEo1oXctIvXJ5FFhNsG8wCle6m3aJ1BB-0vP/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7ne6AKNUJWIjeYlkMbOc6aWvTnN9j2nuOIOO4G6c4ryALKUbEUwOPIcaB6oSfeWx0/exec';
   
   // Google Client ID
   const GOOGLE_CLIENT_ID = '758579492428-rnfev1nkkf2e6qduhujgtfbhudl2j9td.apps.googleusercontent.com';
@@ -7520,6 +7520,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       'ssm_status', 'bank_date_input', 'bank_sign_input', 'bank_status_input',
       'doc_carta_status', 'doc_peta_status', 'doc_gambar_status', 'doc_sewa_status',
       'kwsp_date_1', 'kwsp_s1', 'kwsp_date_2', 'kwsp_s2', 'kwsp_date_3', 'kwsp_s3',
+      'db_status_hantar_spi',
+      'borang_no_telefon',
       'input_ubah_maklumat', 'input_ubah_gred'
     ];
 
@@ -7531,7 +7533,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     document.querySelectorAll('input[name="jenisApp"]').forEach(radio => {
       radio.checked = false;
     });
-
+    
+    const statusDisp = document.getElementById('db_status_hantar_display');
+    if (statusDisp) statusDisp.style.display = 'none';
+    
     const ubahMaklumatInput = document.getElementById('input_ubah_maklumat');
     const ubahGredInput = document.getElementById('input_ubah_gred');
     if (ubahMaklumatInput) ubahMaklumatInput.style.display = 'none';
@@ -8314,6 +8319,31 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         dbLawatanSyor.value = item.lawatan_syor;
       }
     }
+    
+    // === SET STATUS & PAPARAN SPI ===
+    const dbStatusHantarSpi = document.getElementById('db_status_hantar_spi');
+    if (dbStatusHantarSpi) {
+        dbStatusHantarSpi.value = item.status_hantar_spi || '';
+    }
+    
+    const statusDisp = document.getElementById('db_status_hantar_display');
+    if (statusDisp) {
+        if(item.status_hantar_spi === 'DALAM QUEUE') {
+            statusDisp.textContent = '⏳ DALAM QUEUE';
+            statusDisp.style.backgroundColor = '#fef3c7';
+            statusDisp.style.borderColor = '#d97706';
+            statusDisp.style.color = '#b45309';
+            statusDisp.style.display = 'inline-block';
+        } else if(item.status_hantar_spi === 'TELAH DIHANTAR') {
+            statusDisp.textContent = `✅ TELAH DIHANTAR (${item.tarikh_hantar_spi || ''})`;
+            statusDisp.style.backgroundColor = '#dcfce7';
+            statusDisp.style.borderColor = '#16a34a';
+            statusDisp.style.color = '#15803d';
+            statusDisp.style.display = 'inline-block';
+        } else {
+            statusDisp.style.display = 'none';
+        }
+    }
 
     updateValidationCheckboxDisplay();
 
@@ -8409,14 +8439,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         <div class="view-section">
           <div class="view-section-header">🚧 MAKLUMAT LAWATAN & PEMATUHAN</div>
           <div class="view-grid">
-            <div class="view-row">
-              <span class="view-label">STATUS LAWATAN</span>
-              <span class="view-value">${safe(i.lawatan_status)}</span>
-            </div>
-            <div class="view-row">
-              <span class="view-label">PEGAWAI LAWATAN (PIC)</span>
-              <span class="view-value">${safe(i.lawatan_pic)}</span>
-            </div>
             <div class="view-row">
               <span class="view-label">TARIKH LAWATAN</span>
               <span class="view-value">${formatDate(i.lawatan_tarikh)}</span>
@@ -8692,12 +8714,17 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       
       let confirmHantarEmel = false;
       
+      // === LOGIK BARU SEMAKAN HANTAR SPI ===
+      const dbStatusHantarSpi = document.getElementById('db_status_hantar_spi')?.value || '';
+      
+      let confirmHantarEmel = false;
+      
       if (dbSyorValue === 'YA' && dbSubmitDateValue && dbSubmitDateValue.trim() !== '') {
         const hasSyorAndConfirmed = (dbSyorStatusValue.trim() !== '') && isConfirmed;
-        const isPernahHantarSpi = (dbStartDateValue !== '' && dbStartDateValue === dbSubmitDateValue);
+        const isTelahDihantar = (dbStatusHantarSpi === 'TELAH DIHANTAR' || dbStatusHantarSpi === 'DALAM QUEUE');
         
-        if (!hasSyorAndConfirmed && !isPernahHantarSpi) {
-          // --- GANTI KEPADA MODAL ANIMASI DI SINI ---
+        // HANYA MINTA POPUP JIKA: Ia belum dihantar ke queue DAN sudah tekan SOKONG.
+        if (!hasSyorAndConfirmed && !isTelahDihantar) {
           confirmHantarEmel = await CustomAppModal.confirm(
               "Adakah anda ingin hantar emel syarikat ini ke SPI?",
               "Hantar Emel SPI",
@@ -8827,6 +8854,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       'kwsp_date_1', 'kwsp_s1', 'kwsp_date_2', 'kwsp_s2', 'kwsp_date_3', 'kwsp_s3',
       'input_ubah_maklumat', 'input_ubah_gred',
       'db_lawatan_tarikh', 'db_lawatan_submit_sptb', 'db_lawatan_syor',
+      'db_status_hantar_spi',
+      'borang_no_telefon',
       'db_alamat_perniagaan', 'db_perubahan_input'
     ];
 
@@ -8834,6 +8863,9 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    
+    const statusDisp = document.getElementById('db_status_hantar_display');
+    if (statusDisp) statusDisp.style.display = 'none';
     
     document.querySelectorAll('.konsultansi-checkbox').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.konsultansi-date').forEach(d => { d.value = ''; d.style.display = 'none'; });
@@ -10275,6 +10307,62 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               await CustomAppModal.alert("Maklumat Syarikat dari Bakul telah diisi secara automatik ke dalam Borang Semakan!", "Berjaya Dipindahkan", "success");
           }
       });
+  }
+  // =========================================================================
+  // FUNGSI QUEUE SPI MODAL
+  // =========================================================================
+  const btnQueueSPI = document.getElementById('btnQueueSPI');
+  const queueSpiModal = document.getElementById('queueSpiModal');
+  const queueSpiClose = document.getElementById('queueSpiClose');
+  
+  if (btnQueueSPI) {
+      btnQueueSPI.addEventListener('click', async () => {
+          simulateLoading('Mendapatkan senarai queue...');
+          try {
+              const response = await fetchWithRetry(SCRIPT_URL + '?action=getQueueData&t=' + Date.now(), { method: 'GET' }, 3, 1000);
+              const result = await response.json();
+              hideLoading();
+              
+              if (result.status === 'success') {
+                  populateQueueTable('tbodyQueueSiasat', result.siasat);
+                  populateQueueTable('tbodyQueuePemutihan', result.pemutihan);
+                  
+                  queueSpiModal.classList.add('show');
+                  queueSpiModal.style.display = 'flex';
+              } else {
+                  CustomAppModal.alert('Gagal mendapatkan senarai queue.', 'Ralat', 'error');
+              }
+          } catch (error) {
+              hideLoading();
+              CustomAppModal.alert('Gagal mendapatkan senarai queue: ' + error.message, 'Ralat', 'error');
+          }
+      });
+  }
+  
+  if (queueSpiClose) {
+      queueSpiClose.addEventListener('click', () => {
+          queueSpiModal.classList.remove('show');
+          setTimeout(() => queueSpiModal.style.display = 'none', 300);
+      });
+  }
+
+  function populateQueueTable(tbodyId, dataArray) {
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+      
+      if (!dataArray || dataArray.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:15px; color:#64748b;">✅ Tiada permohonan dalam queue ini</td></tr>`;
+          return;
+      }
+      
+      tbody.innerHTML = dataArray.map((item, index) => `
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="text-align:center;">${index + 1}</td>
+              <td style="font-weight:bold; color: #1e293b;">${item.syarikat}</td>
+              <td style="text-align:center; color: #475569;">${item.cidb}</td>
+              <td style="text-align:center; font-size: 0.85rem;">${item.pengesyor}</td>
+          </tr>
+      `).join('');
   }
 
 }); // <--- PENUTUP UTAMA UNTUK DOMContentLoaded

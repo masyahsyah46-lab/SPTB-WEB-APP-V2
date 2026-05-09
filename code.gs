@@ -16,12 +16,12 @@ const ADDITIONAL_AUTHORIZED_DOMAINS = ["kuskop.gov.my"]; // Boleh tambah domain 
 // =========================================================================
 const DEEPSEEK_API_KEY = "sk-afac9888701c4678a58dfef2d49feb7d";
 const GEMINI_API_KEY = "AIzaSyDuwh_qFiE-WeQnJiB1VCXj5mpf7fi96K0";
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "openai/gpt-5-mini";
+const OPENROUTER_MODEL = "tencent/hy3-preview:free";
 
 // Role definitions
 const ROLE_PENGESYOR = "PENGESYOR";
@@ -63,7 +63,7 @@ function getAuthenticatedUserEmail(email) {
     }
     
     const normalizedEmail = email.toString().trim().toLowerCase();
-    
+
     // Semak domain
     const emailDomain = normalizedEmail.split('@')[1];
     if (!emailDomain) {
@@ -86,7 +86,7 @@ function getAuthenticatedUserEmail(email) {
     }
     
     return { email: normalizedEmail, isValid: true, error: null };
-    
+
   } catch (error) {
     Logger.log(`[V6.4.9] Ralat mendapatkan email pengguna: ${error.toString()}`);
     return { 
@@ -113,14 +113,12 @@ function findUserByEmail(email) {
     }
     
     const data = sheet.getDataRange().getDisplayValues();
-    
     if (!data || data.length < 2) {
       Logger.log(`[V6.4.9] Sheet '${USERS_SHEET_NAME}' tiada data`);
       return null;
     }
     
     const headers = data.shift();
-    
     // Cari indeks lajur berdasarkan nama header
     const nameColIndex = headers.findIndex(h => h && h.toString().toUpperCase().includes('NAMA'));
     const emailColIndex = headers.findIndex(h => h && (h.toString().toUpperCase().includes('EMEL') || h.toString().toUpperCase().includes('EMAIL') || h.toString().toUpperCase().includes('E-MEL')));
@@ -137,7 +135,7 @@ function findUserByEmail(email) {
     
     // Cari pengguna berdasarkan emel (case-insensitive)
     const normalizedSearchEmail = email.toLowerCase().trim();
-    
+
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
       const rowEmail = row[finalEmailIndex] ? row[finalEmailIndex].toString().trim().toLowerCase() : '';
@@ -155,7 +153,7 @@ function findUserByEmail(email) {
           phone: safeGet(finalPhoneIndex),
           imageUrl: safeGet(finalImageIndex)
         };
-        
+
         Logger.log(`[V6.4.9] Pengguna dijumpai: ${user.name} (${user.email}) - Role: ${user.role}`);
         return user;
       }
@@ -180,7 +178,7 @@ function handleCheckAuth(email) {
   try {
     // Dapatkan email pengguna dari parameter frontend dan validasi domain
     const authResult = getAuthenticatedUserEmail(email);
-    
+
     if (!authResult.isValid) {
       return createJSONOutput({
         authenticated: false,
@@ -191,7 +189,7 @@ function handleCheckAuth(email) {
     
     // Cari profil pengguna dari Sheet 'Users'
     const userProfile = findUserByEmail(authResult.email);
-    
+
     if (!userProfile) {
       return createJSONOutput({
         authenticated: false,
@@ -207,7 +205,7 @@ function handleCheckAuth(email) {
       user: userProfile,
       message: 'Log masuk berjaya'
     });
-    
+
   } catch (error) {
     Logger.log(`[V6.4.9] Ralat dalam handleCheckAuth: ${error.toString()}`);
     return createJSONOutput({
@@ -241,7 +239,17 @@ function doGet(e) {
       return handleCheckAuth(email);
     }
     
+    // === TAMBAH KOD INI ===
+    if (action === "getQueueData") {
+      const props = PropertiesService.getScriptProperties();
+      const siasatQ = JSON.parse(props.getProperty('SIASAT_QUEUE') || "[]");
+      const pemutihanQ = JSON.parse(props.getProperty('PEMUTIHAN_QUEUE') || "[]");
+      return createJSONOutput({ status: "success", siasat: siasatQ, pemutihan: pemutihanQ });
+    }
+    // ========================
+    
     let result;
+
     if (action === "getUsers") {
       result = getUsersData();
     } else if (action === "getStats") {
@@ -253,7 +261,7 @@ function doGet(e) {
     }
     
     return result;
-    
+
   } catch (error) {
     // Jika timeout lock, kembalikan error 503
     if (error.toString().includes('timed out')) {
@@ -267,6 +275,7 @@ function doGet(e) {
       status: "error", 
       message: error.toString() 
     });
+
   } finally {
     if (locked) {
       lock.releaseLock();
@@ -291,13 +300,13 @@ function doPost(e) {
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME);
-    
+
     if (!sheet) {
       return createJSONOutput({ status: "error", message: "Sheet not found" });
     }
     
     const data = JSON.parse(e.postData.contents);
-    
+
     // =====================================================================
     // V6.4.9: HANDLER UNTUK CHECK AUTH MELALUI POST
     // Frontend boleh menghantar { action: 'checkAuth', email: '...' }
@@ -335,7 +344,7 @@ function doPost(e) {
     }
     
     const shouldCreateFolder = data.createFolder === true;
-    
+
     // ============================================================
     // LOGIK UTAMA: EDIT / KEMASKINI ROW (BERDASARKAN PARAMETER row)
     // ============================================================
@@ -360,6 +369,7 @@ function doPost(e) {
     }
     logActivity("System", 'ERROR', `Ralat: ${error.toString()}`, '');
     return createJSONOutput({ status: "error", message: error.toString() });
+
   } finally {
     if (locked) {
       lock.releaseLock();
@@ -375,8 +385,6 @@ function doPost(e) {
  * Fungsi handleProcessAI: Mengendalikan permintaan AI processing dari frontend
  * Menerima teks PDF dan jenis prompt (borang/profile), menghantar ke API AI
  * dengan 3-Tier Fallback (DeepSeek -> Gemini -> OpenRouter)
- * @param {Object} data - Data dari frontend { action: 'processAI', type: 'borang'|'profile', text: '...' }
- * @returns {ContentService.TextOutput} - Respons JSON dengan data yang diekstrak
  */
 function handleProcessAI(data) {
   try {
@@ -391,44 +399,48 @@ function handleProcessAI(data) {
     }
     
     Logger.log(`[V6.4.8] AI Processing diminta untuk jenis: ${promptType}, panjang teks: ${pdfText.length}`);
-    
+
     // Panggil fungsi processWithAI dengan 3-Tier Fallback
     const result = processWithAI(pdfText, promptType);
-    
+
     if (result.success && result.data) {
       Logger.log(`[V6.4.8] AI Processing berjaya untuk ${promptType}`);
+
       return createJSONOutput({
         success: true,
         data: result.data,
         provider: result.provider,
         message: `Data berjaya diekstrak menggunakan ${result.provider}`
       });
+
     } else {
       Logger.log(`[V6.4.8] AI Processing gagal: ${result.error}`);
+
       return createJSONOutput({
         success: false,
         error: result.error || "Gagal mengekstrak data dari AI",
         provider: result.provider || 'none'
       });
+
     }
     
   } catch (error) {
     Logger.log(`[V6.4.8] Ralat dalam handleProcessAI: ${error.toString()}`);
+
     return createJSONOutput({
       success: false,
       error: error.toString()
     });
+
   }
 }
 
 /**
  * Fungsi processWithAI: Memproses teks dengan AI menggunakan 3-Tier Fallback
- * @param {string} pdfText - Teks yang diekstrak dari PDF
- * @param {string} promptType - Jenis prompt: 'borang' atau 'profile'
- * @returns {Object} - { success: boolean, data: Object|null, provider: string, error: string|null }
  */
 function processWithAI(pdfText, promptType) {
   const maxTextLength = 30000;
+
   const truncatedText = pdfText.length > maxTextLength 
     ? pdfText.substring(0, maxTextLength) + "... [text truncated]"
     : pdfText;
@@ -440,9 +452,11 @@ function processWithAI(pdfText, promptType) {
   if (promptType === 'profile') {
     prompt = buildProfilePrompt(truncatedText);
     processResponseFn = processProfileResponse;
+
   } else {
     prompt = buildBorangPrompt(truncatedText);
     processResponseFn = processBorangResponse;
+
   }
   
   Logger.log(`[V6.4.8] 3-Tier Fallback: Mencuba DeepSeek...`);
@@ -485,7 +499,7 @@ function processWithAI(pdfText, promptType) {
     success: false, 
     data: null, 
     provider: 'none', 
-    error: "Ketiga-tiga API AI (DeepSeek, Gemini, OpenRouter) gagal memproses teks." 
+    error: "Ketiga-tiga API AI (DeepSeek, Gemini, OpenRouter) gagal memproses teks."
   };
 }
 
@@ -493,39 +507,34 @@ function processWithAI(pdfText, promptType) {
 // V6.4.8: FUNGSI PEMBINA PROMPT UNTUK AI
 // =========================================================================
 
-/**
- * Membina prompt untuk ekstrak data borang dari PDF
- */
 function buildBorangPrompt(truncatedText) {
-  return `Ekstrak data syarikat dari teks PDF ini ke format JSON SAHAJA. 
-    PENTING: 
+  return `Ekstrak data syarikat dari teks PDF ini ke format JSON SAHAJA.
+ PENTING: 
     1. spkkDuration dan stbDuration MESTI string format "DD/MM/YYYY - DD/MM/YYYY" atau string kosong "" jika tiada.
-    2. directors, shareholders, checkSignatories, spkkNominees, phoneNumbers MESTI "Array of Strings" (Senarai Nama/No Telefon Sahaja, BUKAN Object).
-    3. phoneNumbers: Ekstrak nombor telefon. PASTIKAN SANGAT KETAT hanya ekstrak nombor telefon pemohon (individu) dan nombor telefon pejabat sahaja. ABAIKAN sebarang nombor faksimili (Fax) atau nombor lain.
-    4. grade: Ekstrak Gred syarikat seperti G1, G2, G3, G4, G5, G6, G7. Cari corak seperti "Gred:", "Grade:", "G1", "G2", dsb. JIKA TERDAPAT LEBIH DARIPADA SATU GRED, AMBIL HANYA SATU GRED PERTAMA YANG DIJUMPAI.
-    5. alamatPerniagaan: Ekstrak "Alamat Perniagaan Syarikat" atau "Alamat Surat-Menyurat" secara penuh. Jika tidak dijumpai, gunakan string kosong "".
-    6. PASTIKAN No. Pendaftaran/CIDB diekstrak dengan 100% TEPAT mengikut format rasmi dari dokumen. Contoh format yang betul: '0120201118-KD061300'. JANGAN mengubah suai, meramal, atau mencipta nombor ini. Cari format yang mempunyai gabungan nombor dan huruf seperti contoh.
-    
-    Keys: companyName, cidbNumber, grade, spkkDuration (string), stbDuration (string), directors (array of strings), shareholders (array of strings), checkSignatories (array of strings), spkkNominees (array of strings), phoneNumbers (array of strings), alamatPerniagaan (string). 
-    Teks PDF: ${truncatedText}`;
+ 2. directors, shareholders, checkSignatories, spkkNominees, phoneNumbers MESTI "Array of Strings" (Senarai Nama/No Telefon Sahaja, BUKAN Object).
+ 3. phoneNumbers: Ekstrak nombor telefon. PASTIKAN SANGAT KETAT hanya ekstrak nombor telefon pemohon (individu) dan nombor telefon pejabat sahaja.
+ ABAIKAN sebarang nombor faksimili (Fax) atau nombor lain.
+    4. grade: Ekstrak Gred syarikat seperti G1, G2, G3, G4, G5, G6, G7.
+ Cari corak seperti "Gred:", "Grade:", "G1", "G2", dsb. JIKA TERDAPAT LEBIH DARIPADA SATU GRED, AMBIL HANYA SATU GRED PERTAMA YANG DIJUMPAI.
+ 5. alamatPerniagaan: Ekstrak "Alamat Perniagaan Syarikat" atau "Alamat Surat-Menyurat" secara penuh. Jika tidak dijumpai, gunakan string kosong "".
+ 6. PASTIKAN No. Pendaftaran/CIDB diekstrak dengan 100% TEPAT mengikut format rasmi dari dokumen. Contoh format yang betul: '0120201118-KD061300'.
+ JANGAN mengubah suai, meramal, atau mencipta nombor ini. Cari format yang mempunyai gabungan nombor dan huruf seperti contoh.
+ Keys: companyName, cidbNumber, grade, spkkDuration (string), stbDuration (string), directors (array of strings), shareholders (array of strings), checkSignatories (array of strings), spkkNominees (array of strings), phoneNumbers (array of strings), alamatPerniagaan (string).
+ Teks PDF: ${truncatedText}`;
 }
 
-/**
- * Membina prompt untuk ekstrak data profile dari PDF
- */
 function buildProfilePrompt(truncatedText) {
-  return `Ekstrak maklumat syarikat dari teks PDF ini ke format JSON SAHAJA. 
-    
-    PENTING UNTUK ALAMAT: 
-    Cari dan ekstrak maklumat alamat. AI PERLU mengenalpasti label alamat utama yang digunakan dalam dokumen. Label alamat utama mungkin berupa 'Alamat Berdaftar', 'Registered Address', 'Alamat Perniagaan', 'Business Address', 'Alamat Surat-menyurat', atau 'Correspondence Address'.
-    
-    Jika label alamat utama mengandungi perkataan "Perniagaan" atau "Business", maka ia adalah Alamat Perniagaan. Jika label tersebut mengandungi perkataan "Surat-menyurat" atau "Correspondence", maka ia adalah Alamat Surat-menyurat. Jika tidak, ia adalah Alamat Berdaftar.
-    
-    Ekstrak juga alamat kedua (jika ada) yang mungkin dilabel sebagai 'Alamat Surat-menyurat', 'Correspondence Address', 'Alamat Kiriman'.
-    
-    PASTIKAN No. Pendaftaran/CIDB diekstrak dengan 100% TEPAT mengikut format rasmi dari dokumen. Contoh format yang betul: '0120201118-KD061300'. JANGAN mengubah suai, meramal, atau mencipta nombor ini. Cari format yang mempunyai gabungan nombor dan huruf seperti contoh.
-    
-    Keys yang diperlukan:
+  return `Ekstrak maklumat syarikat dari teks PDF ini ke format JSON SAHAJA.
+ PENTING UNTUK ALAMAT: 
+    Cari dan ekstrak maklumat alamat.
+ AI PERLU mengenalpasti label alamat utama yang digunakan dalam dokumen.
+ Label alamat utama mungkin berupa 'Alamat Berdaftar', 'Registered Address', 'Alamat Perniagaan', 'Business Address', 'Alamat Surat-menyurat', atau 'Correspondence Address'.
+ Jika label alamat utama mengandungi perkataan "Perniagaan" atau "Business", maka ia adalah Alamat Perniagaan.
+ Jika label tersebut mengandungi perkataan "Surat-menyurat" atau "Correspondence", maka ia adalah Alamat Surat-menyurat. Jika tidak, ia adalah Alamat Berdaftar.
+ Ekstrak juga alamat kedua (jika ada) yang mungkin dilabel sebagai 'Alamat Surat-menyurat', 'Correspondence Address', 'Alamat Kiriman'.
+ PASTIKAN No. Pendaftaran/CIDB diekstrak dengan 100% TEPAT mengikut format rasmi dari dokumen. Contoh format yang betul: '0120201118-KD061300'.
+ JANGAN mengubah suai, meramal, atau mencipta nombor ini. Cari format yang mempunyai gabungan nombor dan huruf seperti contoh.
+ Keys yang diperlukan:
     - applicantName: Nama pemohon/individu (jika ada)
     - jawatan: Jawatan pemohon (jika ada)
     - icNumber: No Kad Pengenalan pemohon (contoh: 123456-78-9012)
@@ -536,7 +545,8 @@ function buildProfilePrompt(truncatedText) {
     - grade: Gred Syarikat (G1, G2, G3, G4, G5, G6, G7)
     - registrationDate: Tarikh Daftar (format: DD/MM/YYYY)
     - jenisPendaftaran: Jenis Pendaftaran (ROC/ROB)
-    - alamatUtama: Alamat utama yang diekstrak dari label alamat utama
+    
+ - alamatUtama: Alamat utama yang diekstrak dari label alamat utama
     - labelAlamatUtama: Label asal alamat utama yang ditemui (contoh: 'Alamat Berdaftar', 'Registered Address', 'Alamat Perniagaan', 'Business Address')
     - alamatSuratMenyurat: Alamat surat-menyurat (jika ada, label seperti 'Alamat Surat-menyurat', 'Correspondence Address', 'Alamat Kiriman')
     - noTelefonSyarikat: No Telefon Syarikat
@@ -545,17 +555,13 @@ function buildProfilePrompt(truncatedText) {
     - webAddress: Web Address / Laman Web
     
     Jika sesuatu maklumat tidak ditemui, gunakan string kosong "".
-    
-    Teks PDF: ${truncatedText}`;
+ Teks PDF: ${truncatedText}`;
 }
 
 // =========================================================================
 // V6.4.8: FUNGSI PANGGILAN API AI
 // =========================================================================
 
-/**
- * Memanggil API DeepSeek
- */
 function callDeepSeekAPI(prompt) {
   const options = {
     method: 'POST',
@@ -569,11 +575,10 @@ function callDeepSeekAPI(prompt) {
     }),
     muteHttpExceptions: true
   };
-  
   const response = UrlFetchApp.fetch(DEEPSEEK_API_URL, options);
   const responseCode = response.getResponseCode();
   const responseText = response.getContentText();
-  
+
   if (responseCode !== 200) {
     throw new Error(`DeepSeek API returned ${responseCode}: ${responseText}`);
   }
@@ -586,12 +591,9 @@ function callDeepSeekAPI(prompt) {
   return data.choices[0].message.content;
 }
 
-/**
- * Memanggil API Gemini
- */
 function callGeminiAPI(prompt) {
   const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-  
+
   const options = {
     method: 'POST',
     headers: {
@@ -602,11 +604,11 @@ function callGeminiAPI(prompt) {
     }),
     muteHttpExceptions: true
   };
-  
+
   const response = UrlFetchApp.fetch(url, options);
   const responseCode = response.getResponseCode();
   const responseText = response.getContentText();
-  
+
   if (responseCode !== 200) {
     throw new Error(`Gemini API returned ${responseCode}: ${responseText}`);
   }
@@ -620,9 +622,6 @@ function callGeminiAPI(prompt) {
   return data.candidates[0].content.parts[0].text;
 }
 
-/**
- * Memanggil API OpenRouter
- */
 function callOpenRouterAPI(prompt) {
   const options = {
     method: 'POST',
@@ -636,11 +635,11 @@ function callOpenRouterAPI(prompt) {
     }),
     muteHttpExceptions: true
   };
-  
+
   const response = UrlFetchApp.fetch(OPENROUTER_API_URL, options);
   const responseCode = response.getResponseCode();
   const responseText = response.getContentText();
-  
+
   if (responseCode !== 200) {
     throw new Error(`OpenRouter API returned ${responseCode}: ${responseText}`);
   }
@@ -657,18 +656,17 @@ function callOpenRouterAPI(prompt) {
 // V6.4.8: FUNGSI PEMPROSESAN RESPONS AI
 // =========================================================================
 
-/**
- * Memproses respons AI untuk data borang
- */
 function processBorangResponse(aiResponse) {
   let cleanedText = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
   let jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
   if (jsonMatch) cleanedText = jsonMatch[0];
   
   const aiData = JSON.parse(cleanedText);
-  
+
   const cleanList = (arr) => {
     if (!Array.isArray(arr)) return [];
+
     return arr.map(item => {
       if (typeof item === 'string') return item.trim();
       if (typeof item === 'object' && item !== null) {
@@ -686,6 +684,7 @@ function processBorangResponse(aiResponse) {
   let grade = '';
   if (aiData.grade) {
     let gradeStr = aiData.grade.toString();
+
     if (gradeStr.includes(',')) {
       grade = gradeStr.split(',')[0].trim();
     } else if (gradeStr.includes(' ')) {
@@ -694,6 +693,7 @@ function processBorangResponse(aiResponse) {
       grade = gradeStr.trim();
     }
     const gradeMatch = grade.match(/\b(G[1-7])\b/i);
+
     if (gradeMatch) grade = gradeMatch[1].toUpperCase();
   }
   
@@ -732,16 +732,14 @@ function processBorangResponse(aiResponse) {
   return transformedData;
 }
 
-/**
- * Memproses respons AI untuk data profile
- */
 function processProfileResponse(aiResponse) {
   let cleanedText = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
   let jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
   if (jsonMatch) cleanedText = jsonMatch[0];
   
   const aiData = JSON.parse(cleanedText);
-  
+
   return {
     applicantName: aiData.applicantName || '',
     jawatan: aiData.jawatan || '',
@@ -767,15 +765,6 @@ function processProfileResponse(aiResponse) {
 // FUNGSI SEDIA ADA
 // =========================================================================
 
-/**
- * FUNGSI BAHARU: sendAutoEmailSPI - Menghantar emel automatik kepada SPI
- * V6.4.1 - Fungsi helper untuk menghantar notifikasi emel dengan UI yang kemas
- * DITAMBAH: Nama penghantar emel ditetapkan sebagai "Sistem STB Bersepadu SPTB"
- * DITAMBAH: Paparan Alamat Perniagaan Syarikat menggantikan Negeri Alamat Operasi
- * DIUBAH: Tarikh Serah SPI digantikan dengan Jenis Permohonan
- * KEMASKINI: Sokongan untuk Pemutihan (subjek dan badan emel akan menunjukkan PEMUTIHAN)
- * @param {Object} data - Objek data yang mengandungi maklumat syarikat
- */
 function sendAutoEmailSPI(data) {
   try {
     // Validasi data yang diperlukan
@@ -801,10 +790,11 @@ function sendAutoEmailSPI(data) {
     const subject = isPemutihan 
       ? `Makluman Permohonan Lawatan Premis (PEMUTIHAN) - ${syarikat}`
       : `Makluman Permohonan Lawatan Premis - ${syarikat}`;
-    
+      
     // Label tambahan untuk pemutihan dalam badan emel
     const pemutihanLabelHTML = isPemutihan ? '<span class="badge" style="background: #e74c3c; margin-left: 10px;">⚠️ PEMUTIHAN</span>' : '';
     const pemutihanText = isPemutihan ? ' (PEMUTIHAN)' : '';
+    
     const pemutihanNoteHTML = isPemutihan ? '<div style="background: #fdf2f2; border-left: 4px solid #e74c3c; padding: 15px; margin: 15px 0;"><strong>⚠️ NOTIS PENTING:</strong> Permohonan ini adalah <strong>PEMUTIHAN</strong>. Sila beri perhatian sewajarnya.</div>' : '';
     const pemutihanNoteText = isPemutihan ? '\n⚠️ NOTIS PENTING: Permohonan ini adalah PEMUTIHAN. Sila beri perhatian sewajarnya.\n' : '';
     
@@ -850,7 +840,7 @@ function sendAutoEmailSPI(data) {
         </div>
         
         <div class="info-row">
-          <div class="info-label">No. CIDB:</div>
+           <div class="info-label">No. CIDB:</div>
           <div class="info-value"><strong>${cidb}</strong></div>
         </div>
         
@@ -932,7 +922,7 @@ Sila ambil tindakan sewajarnya.
 
 *** Emel ini dijana secara automatik oleh Sistem STB. Sila jangan balas emel ini. ***
     `;
-    
+
     // Hantar emel dengan nama penghantar yang ditetapkan
     MailApp.sendEmail({
       to: EMAIL_TO_SPI,
@@ -942,7 +932,7 @@ Sila ambil tindakan sewajarnya.
       body: plainBody,
       name: EMAIL_SENDER_NAME
     });
-    
+
     // Log kejayaan
     logActivity(
       "System", 
@@ -950,9 +940,9 @@ Sila ambil tindakan sewajarnya.
       `Emel notifikasi SPI${isPemutihan ? ' (PEMUTIHAN)' : ''} berjaya dihantar untuk ${syarikat} (CIDB: ${cidb}, Pengesyor: ${pengesyor}) dari ${EMAIL_SENDER_NAME}`, 
       ''
     );
-    
+
     console.log(`[V6.4.5] Email SPI${isPemutihan ? ' (PEMUTIHAN)' : ''} berjaya dihantar untuk ${syarikat} dari ${EMAIL_SENDER_NAME}`);
-    
+
     return { success: true, message: "Emel berjaya dihantar" };
     
   } catch (error) {
@@ -963,7 +953,7 @@ Sila ambil tindakan sewajarnya.
       `Gagal menghantar emel SPI: ${error.toString()}`, 
       ''
     );
-    
+
     console.error(`[V6.4.5] Error sending SPI email: ${error.toString()}`);
     
     return { success: false, message: error.toString() };
@@ -972,254 +962,70 @@ Sila ambil tindakan sewajarnya.
 
 /**
  * FUNGSI BAHARU: Mengendalikan cetakan HTML ke PDF dan simpan ke Drive
- * VERSI V6.4.5 - KEMASKINI STRUKTUR FOLDER: User -> Syarikat -> Jenis-Tarikh
- * DITAMBAH: Warna dinamik dari data.user_color disuntik ke CSS
- * Menerima data.htmlContent sebagai kandungan <body> sahaja (tanpa tag html/body dari frontend)
  */
 function handleCetakDanSimpanPDF(data) {
   try {
-    // Semak parameter yang diperlukan
-    if (!data.htmlContent) {
-      return createJSONOutput({
-        success: false,
-        message: "Kandungan HTML tidak disediakan"
-      });
-    }
+    if (!data.htmlContent) return createJSONOutput({ success: false, message: "Kandungan HTML tidak disediakan" });
+    if (!data.company_name) return createJSONOutput({ success: false, message: "Nama syarikat tidak disediakan" });
+    if (!data.user_name) return createJSONOutput({ success: false, message: "Nama pengguna tidak disediakan" });
     
-    if (!data.company_name) {
-      return createJSONOutput({
-        success: false,
-        message: "Nama syarikat tidak disediakan"
-      });
-    }
-    
-    if (!data.user_name) {
-      return createJSONOutput({
-        success: false,
-        message: "Nama pengguna tidak disediakan"
-      });
-    }
-    
-    // V6.4.5: appType kini dalam format "JENIS - DD-MM-YYYY"
     const appType = data.application_type || data.subfolder_name;
-    if (!appType) {
-      return createJSONOutput({
-        success: false,
-        message: "Jenis permohonan tidak disediakan"
-      });
-    }
+    if (!appType) return createJSONOutput({ success: false, message: "Jenis permohonan tidak disediakan" });
     
-    // 1. Dapatkan atau cipta folder syarikat menggunakan logik sedia ada
     let mainFolder;
     try {
       mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID);
     } catch (e) {
       const folders = DriveApp.getFoldersByName(MAIN_FOLDER_NAME);
-      if (folders.hasNext()) {
-        mainFolder = folders.next();
-      } else {
-        mainFolder = DriveApp.createFolder(MAIN_FOLDER_NAME);
-      }
+      if (folders.hasNext()) mainFolder = folders.next();
+      else mainFolder = DriveApp.createFolder(MAIN_FOLDER_NAME);
     }
     
-    // Dapatkan/cipta folder user
     let userFolder = findFolderInParent(mainFolder, data.user_name);
-    if (!userFolder) {
-      userFolder = mainFolder.createFolder(data.user_name);
-    }
+    if (!userFolder) userFolder = mainFolder.createFolder(data.user_name);
     
-    // V6.4.5: Cipta/cari companyFolder TERUS di dalam userFolder (TIADA monthYearFolder)
     let companyFolder = findFolderInParent(userFolder, data.company_name);
-    if (!companyFolder) {
-      companyFolder = userFolder.createFolder(data.company_name);
-    }
+    if (!companyFolder) companyFolder = userFolder.createFolder(data.company_name);
     
-    // V6.4.5: Cipta/cari typeFolder di dalam companyFolder
-    // appType sudah dalam format "JENIS - DD-MM-YYYY"
     let typeFolder = findFolderInParent(companyFolder, appType.toUpperCase());
-    if (!typeFolder) {
-      typeFolder = companyFolder.createFolder(appType.toUpperCase());
-    }
+    if (!typeFolder) typeFolder = companyFolder.createFolder(appType.toUpperCase());
     
-    // Dapatkan warna dari data.user_color atau gunakan warna lalai
-    const themeColor = data.user_color && data.user_color.trim() !== "" 
-      ? data.user_color 
-      : "#1a73e8"; // Warna lalai biru Google
+    const themeColor = data.user_color && data.user_color.trim() !== "" ? data.user_color : "#1a73e8";
     
-    // 2. Bina struktur HTML yang VALID dan LENGKAP
     const validHtmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <style>
-    /* Reset dan style asas */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Arial', 'Helvetica', sans-serif;
-      background: #fff;
-      padding: 20px;
-    }
-    
-    .print-container {
-      max-width: 1000px;
-      margin: 0 auto;
-      background: white;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    
-    /* Warna tema dinamik - Header strip */
-    .print-header-strip {
-      background: ${themeColor};
-      height: 8px;
-      width: 100%;
-    }
-    
-    /* Kotak bertema */
-    .themed-box {
-      background: ${themeColor}15;
-      border-left: 4px solid ${themeColor};
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-    }
-    
-    /* Header bertema */
-    .themed-header {
-      color: ${themeColor};
-      border-bottom: 2px solid ${themeColor};
-      padding-bottom: 8px;
-      margin-bottom: 15px;
-    }
-    
-    /* Style untuk jadual dengan warna tema */
-    th {
-      background: ${themeColor}20;
-      color: #333;
-      padding: 10px;
-      border: 1px solid #ddd;
-      font-weight: bold;
-    }
-    
-    td {
-      padding: 8px;
-      border: 1px solid #ddd;
-    }
-    
-    /* Header utama */
-    .print-header {
-      padding: 20px;
-      background: #f8f9fa;
-      border-bottom: 2px solid ${themeColor};
-    }
-    
-    .print-header h1 {
-      color: ${themeColor};
-      font-size: 24px;
-      margin-bottom: 5px;
-    }
-    
-    .print-header h2 {
-      color: ${themeColor};
-      font-size: 18px;
-      margin-bottom: 5px;
-    }
-    
-    .print-header h3 {
-      color: ${themeColor};
-      font-size: 16px;
-    }
-    
-    /* Style untuk maklumat */
-    .print-content {
-      padding: 20px;
-    }
-    
-    .info-row {
-      display: flex;
-      margin-bottom: 12px;
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-    }
-    
-    .info-label {
-      width: 180px;
-      font-weight: bold;
-      color: #555;
-    }
-    
-    .info-value {
-      flex: 1;
-      color: #333;
-    }
-    
-    /* Status badges */
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-    
-    .status-sokong {
-      background: #d4edda;
-      color: #155724;
-    }
-    
-    .status-tidak-sokong {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    
-    .status-lulus {
-      background: #d4edda;
-      color: #155724;
-    }
-    
-    .status-tolak {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    
-    /* Footer */
-    .footer {
-      margin-top: 30px;
-      padding-top: 20px;
-      text-align: center;
-      font-size: 11px;
-      color: #999;
-      border-top: 1px solid #eee;
-    }
-    
-    /* Print optimization */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Arial', 'Helvetica', sans-serif; background: #fff; padding: 20px; }
+    .print-container { max-width: 1000px; margin: 0 auto; background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+    .print-header-strip { background: ${themeColor}; height: 8px; width: 100%; }
+    .themed-box { background: ${themeColor}15; border-left: 4px solid ${themeColor}; padding: 15px; margin: 15px 0; border-radius: 4px; }
+    .themed-header { color: ${themeColor}; border-bottom: 2px solid ${themeColor}; padding-bottom: 8px; margin-bottom: 15px; }
+    th { background: ${themeColor}20; color: #333; padding: 10px; border: 1px solid #ddd; font-weight: bold; }
+    td { padding: 8px; border: 1px solid #ddd; }
+    .print-header { padding: 20px; background: #f8f9fa; border-bottom: 2px solid ${themeColor}; }
+    .print-header h1 { color: ${themeColor}; font-size: 24px; margin-bottom: 5px; }
+    .print-header h2 { color: ${themeColor}; font-size: 18px; margin-bottom: 5px; }
+    .print-header h3 { color: ${themeColor}; font-size: 16px; }
+    .print-content { padding: 20px; }
+    .info-row { display: flex; margin-bottom: 12px; padding: 8px; border-bottom: 1px solid #eee; }
+    .info-label { width: 180px; font-weight: bold; color: #555; }
+    .info-value { flex: 1; color: #333; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .status-sokong { background: #d4edda; color: #155724; }
+    .status-tidak-sokong { background: #f8d7da; color: #721c24; }
+    .status-lulus { background: #d4edda; color: #155724; }
+    .status-tolak { background: #f8d7da; color: #721c24; }
+    .footer { margin-top: 30px; padding-top: 20px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; }
     @media print {
-      body {
-        margin: 0;
-        padding: 0;
-      }
-      .print-container {
-        border: none;
-      }
-      .print-header-strip {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
-      .themed-box {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
-      th {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
+      body { margin: 0; padding: 0; }
+      .print-container { border: none; }
+      .print-header-strip { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .themed-box { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      th { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -1234,25 +1040,20 @@ function handleCetakDanSimpanPDF(data) {
 </body>
 </html>
     `;
-    
+
     const blob = Utilities.newBlob(validHtmlContent, MimeType.HTML).getAs(MimeType.PDF);
-    
-    // 3. Namakan fail dengan format yang kemas
     const fileName = `Borang_Semakan_${data.company_name}.pdf`;
     blob.setName(fileName);
     
-    // 4. V6.4.5: Simpan fail PDF ke dalam typeFolder (bukan companyFolder)
     const pdfFile = typeFolder.createFile(blob);
-    
-    // 5. Log aktiviti
+
     logActivity(
       data.user_name, 
       'CETAK_PDF', 
       `PDF Borang Semakan disimpan untuk ${data.company_name} (Warna: ${themeColor})`, 
       typeFolder.getId()
     );
-    
-    // 6. V6.4.5: Pulangkan respons berjaya dengan folder_url dan folder_id dari typeFolder
+
     return createJSONOutput({
       success: true,
       folder_url: typeFolder.getUrl(),
@@ -1263,48 +1064,28 @@ function handleCetakDanSimpanPDF(data) {
       folder_path: `${MAIN_FOLDER_NAME} > ${data.user_name} > ${data.company_name} > ${appType}`,
       message: "PDF berjaya disimpan dan folder disiapkan"
     });
-    
+
   } catch (error) {
     logActivity("System", 'ERROR_CETAK_PDF', `Ralat mencetak PDF: ${error.toString()}`, '');
-    return createJSONOutput({
-      success: false,
-      message: `Gagal mencetak dan menyimpan PDF: ${error.toString()}`
-    });
+    return createJSONOutput({ success: false, message: `Gagal mencetak dan menyimpan PDF: ${error.toString()}` });
   }
 }
 
 /**
- * FUNGSI BARU: Mengendalikan kemaskini rekod sedia ada
- * Menyokong logik "Undo Syor" dengan mengosongkan field syor_status dan tarikh_syor
- * KEMASKINI V6.4.1: Pastikan alamat_perniagaan (Col U), jenis_konsultansi (Col V) dipetakan dengan betul
- * V6.4.1: Tambah auto-emel untuk kemaskini syor lawatan YA dengan tarikh submit SPI DAN hantar_emel_spi === true
- * DITAMBAH: Hantar property 'jenis' ke fungsi sendAutoEmailSPI
- * V6.4.5: Tambah sokongan untuk ubah_maklumat (index 26) dan ubah_gred (index 27)
- * KEMASKINI: Tambah logik auto-emel untuk PEMUTIHAN
+ * FUNGSI KEMASKINI REKOD
  */
 function handleUpdateRecord(data, sheet) {
   try {
     const userName = data.pengesyor || data.pelulus || data.user || "System";
-    
     const rowNum = parseInt(data.row);
     
-    // Validasi row number
-    if (rowNum < 2) {
-      return createJSONOutput({ 
-        status: "error", 
-        message: "Nombor baris tidak sah" 
-      });
-    }
+    if (rowNum < 2) return createJSONOutput({ status: "error", message: "Nombor baris tidak sah" });
     
-    // Dapatkan data sedia ada untuk baris ini (sebagai rujukan jika diperlukan)
     const existingDataRange = sheet.getRange(rowNum, 1, 1, TOTAL_COLUMNS);
     const existingData = existingDataRange.getValues()[0];
     
-    // ============================================================
-    // BLOK 1: KEMASKINI DATA PENGESYOR (Lajur A - O)
-    // ============================================================
+    // BLOK 1 (A-O: Kolum 1-15)
     const rangePengesyor = sheet.getRange(rowNum, 1, 1, 15);
-    
     const updatedPengesyor = [
       data.syarikat !== undefined ? data.syarikat : existingData[0],
       data.cidb !== undefined ? data.cidb : existingData[1],
@@ -1314,184 +1095,141 @@ function handleUpdateRecord(data, sheet) {
       data.tarikh_surat_terdahulu !== undefined ? data.tarikh_surat_terdahulu : existingData[5],
       data.tatatertib !== undefined ? data.tatatertib : existingData[6],
       data.start_date !== undefined ? data.start_date : existingData[7],
-      data.syor_lawatan_baru !== undefined ? data.syor_lawatan_baru : 
-        (data.syor_lawatan !== undefined ? data.syor_lawatan : existingData[8]),
+      data.syor_lawatan_baru !== undefined ? data.syor_lawatan_baru : (data.syor_lawatan !== undefined ? data.syor_lawatan : existingData[8]),
       data.date_submit !== undefined ? data.date_submit : existingData[9],
       (data.pautan && data.pautan.toString().trim() !== "") ? data.pautan : existingData[10],
-      data.justifikasi_baru !== undefined ? data.justifikasi_baru : 
-        (data.justifikasi !== undefined ? data.justifikasi : existingData[11]),
+      data.justifikasi_baru !== undefined ? data.justifikasi_baru : (data.justifikasi !== undefined ? data.justifikasi : existingData[11]),
       data.pengesyor !== undefined ? data.pengesyor : existingData[12],
       data.syor_status !== undefined ? data.syor_status : existingData[13],
       data.tarikh_syor !== undefined ? data.tarikh_syor : existingData[14]
     ];
-    
     rangePengesyor.setValues([updatedPengesyor]);
-    
-    // ============================================================
-    // BLOK 2: KEMASKINI DATA LAWATAN (Lajur P - V)
-    // V6.4.1: Index 20 (Col U) = alamat_perniagaan, Index 21 (Col V) = jenis_konsultansi
-    // ============================================================
-    if (data.lawatan_status !== undefined || data.lawatan_pic !== undefined || 
-        data.lawatan_tarikh !== undefined || data.lawatan_submit_sptb !== undefined ||
-        data.lawatan_syor !== undefined || data.alamat_perniagaan !== undefined ||
-        data.jenis_konsultansi !== undefined) {
-      
-      const rangeLawatan = sheet.getRange(rowNum, 16, 1, 7);
-      const currentLawatan = rangeLawatan.getValues()[0];
-      
-      const updatedLawatan = [
-        data.lawatan_status !== undefined ? data.lawatan_status : currentLawatan[0],
-        data.lawatan_pic !== undefined ? data.lawatan_pic : currentLawatan[1],
-        data.lawatan_tarikh !== undefined ? data.lawatan_tarikh : currentLawatan[2],
-        data.lawatan_submit_sptb !== undefined ? data.lawatan_submit_sptb : currentLawatan[3],
-        data.lawatan_syor !== undefined ? data.lawatan_syor : currentLawatan[4],
-        data.alamat_perniagaan !== undefined ? data.alamat_perniagaan : currentLawatan[5],
-        data.jenis_konsultansi !== undefined ? data.jenis_konsultansi : currentLawatan[6]
+
+    // BLOK 2: STATUS HANTAR SPI & TARIKH HANTAR SPI (P-Q: Kolum 16-17)
+    if (data.status_hantar_spi !== undefined || data.tarikh_hantar_spi !== undefined) {
+      const rangeSPI = sheet.getRange(rowNum, 16, 1, 2);
+      const currentSPI = rangeSPI.getValues()[0];
+      const updatedSPI = [
+        data.status_hantar_spi !== undefined ? data.status_hantar_spi : currentSPI[0],
+        data.tarikh_hantar_spi !== undefined ? data.tarikh_hantar_spi : currentSPI[1]
       ];
+      rangeSPI.setValues([updatedSPI]);
+    }
+
+    // BLOK 3 (R-X: Kolum 18-24) - lawatan_tarikh, lawatan_submit_sptb, lawatan_syor, alamat_perniagaan, jenis_konsultansi, alasan, kelulusan
+    if (data.lawatan_tarikh !== undefined || data.lawatan_submit_sptb !== undefined ||
+        data.lawatan_syor !== undefined || data.alamat_perniagaan !== undefined ||
+        data.jenis_konsultansi !== undefined || data.alasan !== undefined ||
+        data.kelulusan !== undefined) {
       
+      const rangeLawatan = sheet.getRange(rowNum, 18, 1, 7);
+      const currentLawatan = rangeLawatan.getValues()[0];
+      const updatedLawatan = [
+        data.lawatan_tarikh !== undefined ? data.lawatan_tarikh : currentLawatan[0],
+        data.lawatan_submit_sptb !== undefined ? data.lawatan_submit_sptb : currentLawatan[1],
+        data.lawatan_syor !== undefined ? data.lawatan_syor : currentLawatan[2],
+        data.alamat_perniagaan !== undefined ? data.alamat_perniagaan : currentLawatan[3],
+        data.jenis_konsultansi !== undefined ? data.jenis_konsultansi : currentLawatan[4],
+        data.alasan !== undefined ? data.alasan : currentLawatan[5],
+        data.kelulusan !== undefined ? data.kelulusan : currentLawatan[6]
+      ];
       rangeLawatan.setValues([updatedLawatan]);
     }
     
-    // ============================================================
-    // BLOK 3: KEMASKINI DATA PELULUS (Lajur W - Z)
-    // ============================================================
-    if (data.alasan !== undefined || data.kelulusan !== undefined || 
-        data.tarikh_lulus !== undefined || data.pelulus !== undefined) {
+    // BLOK 4 (Y-AB: Kolum 25-28) - tarikh_lulus, pelulus, ubah_maklumat, ubah_gred
+    if (data.tarikh_lulus !== undefined || data.pelulus !== undefined ||
+        data.ubah_maklumat !== undefined || data.ubah_gred !== undefined) {
       
-      const rangePelulus = sheet.getRange(rowNum, 23, 1, 4);
+      const rangePelulus = sheet.getRange(rowNum, 25, 1, 4);
       const currentPelulus = rangePelulus.getValues()[0];
-      
       const updatedPelulus = [
-        data.alasan !== undefined ? data.alasan : currentPelulus[0],
-        data.kelulusan !== undefined ? data.kelulusan : currentPelulus[1],
-        data.tarikh_lulus !== undefined ? data.tarikh_lulus : currentPelulus[2],
-        data.pelulus !== undefined ? data.pelulus : currentPelulus[3]
+        data.tarikh_lulus !== undefined ? data.tarikh_lulus : currentPelulus[0],
+        data.pelulus !== undefined ? data.pelulus : currentPelulus[1],
+        data.ubah_maklumat !== undefined ? data.ubah_maklumat : currentPelulus[2],
+        data.ubah_gred !== undefined ? data.ubah_gred : currentPelulus[3]
       ];
-      
       rangePelulus.setValues([updatedPelulus]);
     }
     
-    // ============================================================
-    // BLOK 4: KEMASKINI DATA UBAH MAKLUMAT & UBAH GRED (Lajur AA - AB) - V6.4.5
-    // Memastikan pengisian data dari Tab Input Database adalah konsisten
-    // ============================================================
-    if (data.ubah_maklumat !== undefined || data.ubah_gred !== undefined) {
-      const rangeUbah = sheet.getRange(rowNum, 27, 1, 2);
-      const currentUbah = rangeUbah.getValues()[0];
-      
-      const updatedUbah = [
-        data.ubah_maklumat !== undefined ? data.ubah_maklumat : currentUbah[0],
-        data.ubah_gred !== undefined ? data.ubah_gred : currentUbah[1]
-      ];
-      
-      rangeUbah.setValues([updatedUbah]);
-    }
+    // AUTO EMAIL LOGIC
+    let syorLawatanValue = data.syor_lawatan_baru !== undefined ? data.syor_lawatan_baru : (data.syor_lawatan !== undefined ? data.syor_lawatan : existingData[8]);
+    let dateSubmitValue = data.date_submit !== undefined ? data.date_submit : existingData[9];
     
-    // V6.4.1: Semak untuk auto-emel SPI dengan syarat hantar_emel_spi === true
-    // Tentukan nilai syor_lawatan (gunakan nilai baru jika ada, atau existing)
-    let syorLawatanValue;
-    if (data.syor_lawatan_baru !== undefined) {
-      syorLawatanValue = data.syor_lawatan_baru;
-    } else if (data.syor_lawatan !== undefined) {
-      syorLawatanValue = data.syor_lawatan;
-    } else {
-      syorLawatanValue = existingData[8];
-    }
-    
-    // Tentukan nilai date_submit (gunakan nilai baru jika ada, atau existing)
-    let dateSubmitValue;
-    if (data.date_submit !== undefined) {
-      dateSubmitValue = data.date_submit;
-    } else {
-      dateSubmitValue = existingData[9];
-    }
-    
-    // Semak syarat untuk hantar emel SPI biasa (YA)
     const syorLawatanYA = syorLawatanValue && syorLawatanValue.toString().toUpperCase() === 'YA';
     const dateSubmitExists = dateSubmitValue && dateSubmitValue.toString().trim() !== '';
     const hantarEmelSPI = data.hantar_emel_spi === true;
-    
+
     if (syorLawatanYA && dateSubmitExists && hantarEmelSPI) {
-      // Dapatkan alamat perniagaan (gunakan nilai baru jika ada, atau existing)
-      let alamatPerniagaanValue;
-      if (data.alamat_perniagaan !== undefined) {
-        alamatPerniagaanValue = data.alamat_perniagaan;
-      } else {
-        // Index 20 adalah alamat_perniagaan (lajur U) dalam existingData
-        alamatPerniagaanValue = existingData[20];
-      }
-      
-      // Bina objek data lengkap untuk emel
+      let alamatPerniagaanValue = data.alamat_perniagaan !== undefined ? data.alamat_perniagaan : existingData[20];
       const emailData = {
-        syarikat: data.syarikat !== undefined ? data.syarikat : existingData[0],
-        cidb: data.cidb !== undefined ? data.cidb : existingData[1],
-        gred: data.gred !== undefined ? data.gred : existingData[2],
-        jenis: data.jenis !== undefined ? data.jenis : existingData[3], // V6.4.1: Tambah jenis
-        alamat_perniagaan: alamatPerniagaanValue || 'Tiada',
-        pengesyor: data.pengesyor !== undefined ? data.pengesyor : existingData[12],
-        justifikasi: data.justifikasi_baru !== undefined ? data.justifikasi_baru : 
-          (data.justifikasi !== undefined ? data.justifikasi : existingData[11]),
-        pautan: (data.pautan && data.pautan.toString().trim() !== "") ? data.pautan : existingData[10],
-        date_submit: dateSubmitValue,
-        syor_lawatan: syorLawatanValue
-      };
-      
-      // Hantar emel secara asinkron (tidak mengganggu response utama)
-      try {
-        sendAutoEmailSPI(emailData);
-        console.log(`[V6.4.5] SPI email triggered on update for row ${rowNum}: ${emailData.syarikat}`);
-      } catch (emailError) {
-        console.error(`[V6.4.5] Failed to send SPI email on update: ${emailError.toString()}`);
-        // Tidak mengganggu flow utama - teruskan
-      }
-    }
-    
-    // KEMASKINI: Logik auto-emel untuk PEMUTIHAN
-    // Semak syarat untuk Pemutihan: syor_lawatan === 'PEMUTIHAN' DAN tarikh_lulus wujud DAN hantar_emel_spi_pemutihan === true
-    const syorLawatanPemutihan = syorLawatanValue && syorLawatanValue.toString().toUpperCase() === 'PEMUTIHAN';
-    const tarikhLulusValue = data.tarikh_lulus !== undefined ? data.tarikh_lulus : existingData[24];
-    const tarikhLulusExists = tarikhLulusValue && tarikhLulusValue.toString().trim() !== '';
-    const hantarEmelSPIPemutihan = data.hantar_emel_spi_pemutihan === true;
-    
-    if (syorLawatanPemutihan && tarikhLulusExists && hantarEmelSPIPemutihan) {
-      // Dapatkan alamat perniagaan (gunakan nilai baru jika ada, atau existing)
-      let alamatPerniagaanValue;
-      if (data.alamat_perniagaan !== undefined) {
-        alamatPerniagaanValue = data.alamat_perniagaan;
-      } else {
-        alamatPerniagaanValue = existingData[20];
-      }
-      
-      // Bina objek data lengkap untuk emel Pemutihan
-      const emailDataPemutihan = {
+        row: rowNum,
         syarikat: data.syarikat !== undefined ? data.syarikat : existingData[0],
         cidb: data.cidb !== undefined ? data.cidb : existingData[1],
         gred: data.gred !== undefined ? data.gred : existingData[2],
         jenis: data.jenis !== undefined ? data.jenis : existingData[3],
         alamat_perniagaan: alamatPerniagaanValue || 'Tiada',
         pengesyor: data.pengesyor !== undefined ? data.pengesyor : existingData[12],
-        justifikasi: data.justifikasi_baru !== undefined ? data.justifikasi_baru : 
-          (data.justifikasi !== undefined ? data.justifikasi : existingData[11]),
+        justifikasi: data.justifikasi_baru !== undefined ? data.justifikasi_baru : (data.justifikasi !== undefined ? data.justifikasi : existingData[11]),
         pautan: (data.pautan && data.pautan.toString().trim() !== "") ? data.pautan : existingData[10],
         date_submit: dateSubmitValue,
         syor_lawatan: syorLawatanValue
       };
-      
-      // Hantar emel Pemutihan secara asinkron
+
       try {
-        sendAutoEmailSPI(emailDataPemutihan);
-        console.log(`[V6.4.5] SPI PEMUTIHAN email triggered on update for row ${rowNum}: ${emailDataPemutihan.syarikat}`);
-      } catch (emailError) {
-        console.error(`[V6.4.5] Failed to send SPI PEMUTIHAN email on update: ${emailError.toString()}`);
-        // Tidak mengganggu flow utama - teruskan
+        addToSiasatQueue(emailData);
+        console.log(`[V6.5.2] SPI SIASAT queued for daily 10AM for row ${rowNum}: ${emailData.syarikat}`);
+      } catch (queueError) {
+        console.error(`[V6.5.2] Failed to queue SPI SIASAT on update: ${queueError.toString()}`);
       }
+    }
+    
+    const syorLawatanPemutihan = syorLawatanValue && syorLawatanValue.toString().toUpperCase() === 'PEMUTIHAN';
+    const tarikhLulusValue = data.tarikh_lulus !== undefined ? data.tarikh_lulus : existingData[24];
+    const tarikhLulusExists = tarikhLulusValue && tarikhLulusValue.toString().trim() !== '';
+    const hantarEmelSPIPemutihan = data.hantar_emel_spi_pemutihan === true;
+    
+    if (syorLawatanPemutihan && tarikhLulusExists && hantarEmelSPIPemutihan) {
+      let alamatPerniagaanValue = data.alamat_perniagaan !== undefined ? data.alamat_perniagaan : existingData[20];
+      const emailDataPemutihan = {
+        row: rowNum,
+        syarikat: data.syarikat !== undefined ? data.syarikat : existingData[0],
+        cidb: data.cidb !== undefined ? data.cidb : existingData[1],
+        gred: data.gred !== undefined ? data.gred : existingData[2],
+        jenis: data.jenis !== undefined ? data.jenis : existingData[3],
+        alamat_perniagaan: alamatPerniagaanValue || 'Tiada',
+        pengesyor: data.pengesyor !== undefined ? data.pengesyor : existingData[12],
+        justifikasi: data.justifikasi_baru !== undefined ? data.justifikasi_baru : (data.justifikasi !== undefined ? data.justifikasi : existingData[11]),
+        pautan: (data.pautan && data.pautan.toString().trim() !== "") ? data.pautan : existingData[10],
+        date_submit: dateSubmitValue,
+        syor_lawatan: syorLawatanValue
+      };
+
+      try {
+        addToPemutihanQueue(emailDataPemutihan);
+        console.log(`[V6.5.2] SPI PEMUTIHAN queued for Friday 11AM for row ${rowNum}: ${emailDataPemutihan.syarikat}`);
+      } catch (queueError) {
+        console.error(`[V6.5.2] Failed to queue SPI PEMUTIHAN on update: ${queueError.toString()}`);
+      }
+    }
+    
+    // === UPDATE KE DALAM QUEUE - Kolum P & Q (16 & 17) ===
+    if (data.date_submit === '') {
+        sheet.getRange(rowNum, 16, 1, 2).clearContent();
+        removeFromQueue(existingData[0], 'SIASAT_QUEUE');
+        removeFromQueue(existingData[0], 'PEMUTIHAN_QUEUE');
+    } else {
+        if (syorLawatanYA && dateSubmitExists && hantarEmelSPI) {
+            sheet.getRange(rowNum, 16, 1, 1).setValue("DALAM QUEUE");
+        }
+        if (syorLawatanPemutihan && tarikhLulusExists && hantarEmelSPIPemutihan) {
+            sheet.getRange(rowNum, 16, 1, 1).setValue("DALAM QUEUE");
+        }
     }
     
     const actionType = (data.syor_status === "" && existingData[13] !== "") ? 'UNDO_RECOMMENDATION' : 'UPDATE_RECORD';
     const actionDesc = actionType === 'UNDO_RECOMMENDATION' 
       ? `Undo syor di baris ${rowNum} untuk ${data.syarikat || existingData[0] || 'syarikat'}`
       : `Rekod dikemaskini di baris ${rowNum} untuk ${data.syarikat || existingData[0] || 'syarikat'}`;
-    
     logActivity(userName, actionType, actionDesc, '');
 
     return createJSONOutput({ 
@@ -1500,7 +1238,7 @@ function handleUpdateRecord(data, sheet) {
       row: rowNum,
       message: actionType === 'UNDO_RECOMMENDATION' ? "Syor berjaya dibatalkan" : "Rekod berjaya dikemaskini"
     });
-    
+
   } catch (error) {
     logActivity("System", 'ERROR', `Ralat kemaskini rekod: ${error.toString()}`, '');
     return createJSONOutput({ status: "error", message: error.toString() });
@@ -1508,11 +1246,7 @@ function handleUpdateRecord(data, sheet) {
 }
 
 /**
- * FUNGSI BARU: Mengendalikan penambahan rekod baru
- * V6.4.1: Tambah auto-emel untuk syor lawatan YA dengan tarikh submit SPI DAN hantar_emel_spi === true
- * V6.4.1: Kemaskini pemetaan alamat_perniagaan dan jenis_konsultansi
- * DITAMBAH: Hantar property 'jenis' ke fungsi sendAutoEmailSPI
- * V6.4.5: Tambah sokongan untuk ubah_maklumat (index 26) dan ubah_gred (index 27)
+ * FUNGSI TAMBAH REKOD BARU
  */
 function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
   try {
@@ -1520,11 +1254,10 @@ function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
     
     const cache = CacheService.getScriptCache();
     let targetRow = cache.get("firstEmptyRow_" + SHEET_NAME);
-    
+
     if (!targetRow) {
       const lastRow = sheet.getLastRow();
       targetRow = 2;
-      
       if (lastRow > 1) {
         const columnA = sheet.getRange("A2:A" + lastRow).getValues();
         for (let i = 0; i < columnA.length; i++) {
@@ -1541,66 +1274,59 @@ function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
     
     let folderUrl = "";
     let folderId = "";
-    
+
     if (shouldCreateFolder && data.syarikat && data.start_date && data.jenis && data.pengesyor) {
-      const folderResult = createUserFolderStructure(
-        data.syarikat,
-        data.start_date,
-        data.jenis,
-        data.pengesyor
-      );
-      
+      const folderResult = createUserFolderStructure(data.syarikat, data.start_date, data.jenis, data.pengesyor);
       if (folderResult.success) {
         folderUrl = folderResult.folderUrl;
         folderId = folderResult.folderId;
       }
     }
     
-    // V6.4.5: Memastikan pemetaan lajur adalah konsisten
-    // Lajur AA (index 26) = ubah_maklumat, Lajur AB (index 27) = ubah_gred
-    // Pemetaan ini mengambil kira input yang dihantar dari Tab Input Database
+    // Susunan kolum: A-O (1-15) | P-Q (16-17) STATUS & TARIKH HANTAR SPI | R-X (18-24) | Y-AB (25-28)
     const newRow = [
+      // A-O (Kolum 1-15)
       data.syarikat||"", data.cidb||"", data.gred||"", data.jenis||"", 
       data.negeri||"", data.tarikh_surat_terdahulu||"", data.tatatertib||"", 
       data.start_date||"", data.syor_lawatan||"", data.date_submit||"", 
       folderUrl || data.pautan||"", 
       data.justifikasi||"", data.pengesyor||"", 
       data.syor_status||"", data.tarikh_syor||"",
-      data.lawatan_status||"", data.lawatan_pic||"", 
-      data.lawatan_tarikh||"",        // Lajur R (Index 17)
-      data.lawatan_submit_sptb||"",   // Lajur S (Index 18)
-      data.lawatan_syor||"",          // Lajur T (Index 19)
-      data.alamat_perniagaan||"",     // Lajur U (Index 20) - V6.4.1: Ditukar dari lawatan_tatatertib
-      data.jenis_konsultansi||"",     // Lajur V (Index 21) - V6.4.1: Ditukar dari lawatan_ketidakpatuhan
-      data.alasan||"", data.kelulusan||"", data.tarikh_lulus||"", data.pelulus||"",
-      data.ubah_maklumat||"",         // Lajur AA (Index 26) - V6.4.5: Konsisten dengan Input Database
-      data.ubah_gred||""              // Lajur AB (Index 27) - V6.4.5: Konsisten dengan Input Database
+      // P-Q (Kolum 16-17): STATUS HANTAR SPI & TARIKH HANTAR SPI
+      data.hantar_emel_spi ? "DALAM QUEUE" : "",  // P (16) - Status Hantar SPI
+      "",                                          // Q (17) - Tarikh Hantar SPI
+      // R-X (Kolum 18-24)
+      data.lawatan_tarikh||"",        
+      data.lawatan_submit_sptb||"",   
+      data.lawatan_syor||"",          
+      data.alamat_perniagaan||"",     
+      data.jenis_konsultansi||"",     
+      data.alasan||"", 
+      data.kelulusan||"",
+      // Y-AB (Kolum 25-28)
+      data.tarikh_lulus||"", 
+      data.pelulus||"",
+      data.ubah_maklumat||"",         
+      data.ubah_gred||""
     ];
-    
+
     const targetRange = sheet.getRange(targetRow, 1, 1, newRow.length);
     targetRange.setValues([newRow]);
-    
     cache.put("firstEmptyRow_" + SHEET_NAME, (targetRow + 1).toString(), 300);
-    
-    logActivity(
-      data.pengesyor || "System", 
-      'INSERT_RECORD', 
-      `Rekod baharu dimasukkan di baris ${targetRow} untuk ${data.syarikat || 'syarikat'}`, 
-      folderId
-    );
-    
-    // V6.4.1: Semak untuk auto-emel SPI dengan syarat hantar_emel_spi === true
+
+    logActivity(data.pengesyor || "System", 'INSERT_RECORD', `Rekod baharu dimasukkan di baris ${targetRow} untuk ${data.syarikat || 'syarikat'}`, folderId);
+
     const syorLawatanYA = data.syor_lawatan && data.syor_lawatan.toString().toUpperCase() === 'YA';
     const dateSubmitExists = data.date_submit && data.date_submit.toString().trim() !== '';
     const hantarEmelSPI = data.hantar_emel_spi === true;
-    
+
     if (syorLawatanYA && dateSubmitExists && hantarEmelSPI) {
-      // Bina objek data untuk emel
       const emailData = {
+        row: targetRow,
         syarikat: data.syarikat || "",
         cidb: data.cidb || "",
         gred: data.gred || "",
-        jenis: data.jenis || "", // V6.4.1: Tambah jenis
+        jenis: data.jenis || "", 
         alamat_perniagaan: data.alamat_perniagaan || "Tiada",
         pengesyor: data.pengesyor || "",
         justifikasi: data.justifikasi || "",
@@ -1608,30 +1334,19 @@ function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
         date_submit: data.date_submit || "",
         syor_lawatan: data.syor_lawatan || ""
       };
-      
-      // Hantar emel secara asinkron
+
       try {
-        sendAutoEmailSPI(emailData);
-        console.log(`[V6.4.5] SPI email triggered on insert for row ${targetRow}: ${emailData.syarikat}`);
-      } catch (emailError) {
-        console.error(`[V6.4.5] Failed to send SPI email on insert: ${emailError.toString()}`);
+        addToSiasatQueue(emailData);
+        console.log(`[V6.5.2] SPI SIASAT queued for daily 10AM on insert for row ${targetRow}: ${emailData.syarikat}`);
+      } catch (queueError) {
+        console.error(`[V6.5.2] Failed to queue SPI SIASAT on insert: ${queueError.toString()}`);
       }
     }
     
-    const response = {
-      status: "success", 
-      action: "inserted", 
-      row: targetRow,
-      message: "Data dimasukkan di baris " + targetRow
-    };
-    
-    if (folderUrl) {
-      response.pautan = folderUrl;
-      response.folderId = folderId;
-    }
-    
+    const response = { status: "success", action: "inserted", row: targetRow, message: "Data dimasukkan di baris " + targetRow };
+    if (folderUrl) { response.pautan = folderUrl; response.folderId = folderId; }
     return createJSONOutput(response);
-    
+
   } catch (error) {
     logActivity("System", 'ERROR', `Ralat tambah rekod: ${error.toString()}`, '');
     return createJSONOutput({ status: "error", message: error.toString() });
@@ -1644,86 +1359,37 @@ function handleInsertNewRecord(data, sheet, shouldCreateFolder) {
 function handleDeleteRecord(data, sheet) {
   try {
     const userName = data.user || "System";
-    
     const rowNum = parseInt(data.row);
     const deleteType = data.deleteType;
     
-    if (!rowNum || rowNum < 2) {
-      return createJSONOutput({ 
-        status: "error", 
-        message: "Baris tidak sah" 
-      });
-    }
+    if (!rowNum || rowNum < 2) return createJSONOutput({ status: "error", message: "Baris tidak sah" });
     
     if (deleteType === 'padam_semua') {
       sheet.deleteRow(rowNum);
-      
-      logActivity(
-        userName, 
-        'DELETE_RECORD', 
-        `Rekod dipadam sepenuhnya di baris ${rowNum}`, 
-        ''
-      );
-      
-      return createJSONOutput({ 
-        status: "success", 
-        message: "Rekod berjaya dipadam sepenuhnya",
-        action: "deleted_full"
-      });
-      
+      logActivity(userName, 'DELETE_RECORD', `Rekod dipadam sepenuhnya di baris ${rowNum}`, '');
+      return createJSONOutput({ status: "success", message: "Rekod berjaya dipadam sepenuhnya", action: "deleted_full" });
     } else if (deleteType === 'padam_syor') {
       const rangeToClear = sheet.getRange(rowNum, 13, 1, 3);
       rangeToClear.clearContent();
-      
-      logActivity(
-        userName, 
-        'CLEAR_RECOMMENDATION', 
-        `Syor dikosongkan di baris ${rowNum}`, 
-        ''
-      );
-      
-      return createJSONOutput({ 
-        status: "success", 
-        message: "Syor berjaya dikosongkan",
-        action: "cleared_syor"
-      });
+      logActivity(userName, 'CLEAR_RECOMMENDATION', `Syor dikosongkan di baris ${rowNum}`, '');
+      return createJSONOutput({ status: "success", message: "Syor berjaya dikosongkan", action: "cleared_syor" });
     } else {
-      return createJSONOutput({ 
-        status: "error", 
-        message: "Jenis padam tidak sah" 
-      });
+      return createJSONOutput({ status: "error", message: "Jenis padam tidak sah" });
     }
-    
   } catch (error) {
     logActivity("System", 'ERROR', `Ralat padam rekod: ${error.toString()}`, '');
-    return createJSONOutput({ 
-      status: "error", 
-      message: error.toString() 
-    });
+    return createJSONOutput({ status: "error", message: error.toString() });
   }
 }
 
-/**
- * Fungsi Khas: Ambil Senarai Users dari Tab 'Users'
- * KEMASKINI V6.4.9: Kini menggunakan E-mel sebagai primary key (sebelum ini PIN)
- * DITAMBAH: Field email dari lajur yang mengandungi 'EMAIL', 'EMEL', atau 'E-MEL'
- */
 function getUsersData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(USERS_SHEET_NAME);
-  
-  if (!sheet) {
-    return createJSONOutput([]);
-  }
-
+  if (!sheet) return createJSONOutput([]);
   const data = sheet.getDataRange().getDisplayValues();
-  
-  if (!data || data.length < 2) {
-    return createJSONOutput([]);
-  }
+  if (!data || data.length < 2) return createJSONOutput([]);
   
   const headers = data.shift();
-  
   const nameColIndex = headers.findIndex(h => h && h.toString().toUpperCase().includes('NAMA'));
   const emailColIndex = headers.findIndex(h => h && (h.toString().toUpperCase().includes('EMEL') || h.toString().toUpperCase().includes('EMAIL') || h.toString().toUpperCase().includes('E-MEL')));
   const roleColIndex = headers.findIndex(h => h && h.toString().toUpperCase().includes('ROLE'));
@@ -1738,30 +1404,15 @@ function getUsersData() {
   const finalImageIndex = 6;
 
   const users = data.map(row => {
-    const safeGet = (index, defaultValue = '') => {
-      return row && row[index] !== undefined && row[index] !== null ? String(row[index]).trim() : defaultValue;
-    };
-    
-    return {
-      name: safeGet(finalNameIndex),
-      email: safeGet(finalEmailIndex),
-      role: safeGet(finalRoleIndex).toUpperCase(),
-      color: safeGet(finalColorIndex),
-      phone: safeGet(finalPhoneIndex),
-      imageUrl: safeGet(finalImageIndex)
-    };
+    const safeGet = (index, defaultValue = '') => { return row && row[index] !== undefined && row[index] !== null ? String(row[index]).trim() : defaultValue; };
+    return { name: safeGet(finalNameIndex), email: safeGet(finalEmailIndex), role: safeGet(finalRoleIndex).toUpperCase(), color: safeGet(finalColorIndex), phone: safeGet(finalPhoneIndex), imageUrl: safeGet(finalImageIndex) };
   }).filter(user => user.name !== "");
-
   return createJSONOutput(users);
 }
 
-/**
- * Fungsi untuk mendapatkan statistik berdasarkan role
- */
 function getStatisticsData(role, userName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
-  
   if (!sheet) return createJSONOutput({ error: "Sheet not found" });
   
   const lastRow = sheet.getLastRow();
@@ -1771,7 +1422,6 @@ function getStatisticsData(role, userName) {
   const data = dataRange.getDisplayValues();
   
   let filteredData = data.filter(row => row[0] && row[0].toString().trim() !== "");
-  
   if (role === ROLE_PENGESYOR && userName) {
     filteredData = filteredData.filter(row => row[12] && row[12].toString().toUpperCase() === userName.toUpperCase());
   } else if (role === ROLE_PELULUS && userName) {
@@ -1782,7 +1432,7 @@ function getStatisticsData(role, userName) {
   const lulus = filteredData.filter(row => row[23] && row[23].toString().includes('LULUS')).length;
   const tolak = filteredData.filter(row => row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))).length;
   const proses = total - (lulus + tolak);
-  
+
   const monthlyStats = {};
   const yearStats = {};
   
@@ -1796,31 +1446,18 @@ function getStatisticsData(role, userName) {
         const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
         const yearKey = year.toString();
         
-        if (!monthlyStats[monthKey]) {
-          monthlyStats[monthKey] = { total: 0, lulus: 0, tolak: 0, proses: 0 };
-        }
+        if (!monthlyStats[monthKey]) monthlyStats[monthKey] = { total: 0, lulus: 0, tolak: 0, proses: 0 };
         monthlyStats[monthKey].total++;
         
-        if (row[23] && row[23].toString().includes('LULUS')) {
-          monthlyStats[monthKey].lulus++;
-        } else if (row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))) {
-          monthlyStats[monthKey].tolak++;
-        } else {
-          monthlyStats[monthKey].proses++;
-        }
+        if (row[23] && row[23].toString().includes('LULUS')) monthlyStats[monthKey].lulus++;
+        else if (row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))) monthlyStats[monthKey].tolak++;
+        else monthlyStats[monthKey].proses++;
         
-        if (!yearStats[yearKey]) {
-          yearStats[yearKey] = { total: 0, lulus: 0, tolak: 0, proses: 0 };
-        }
+        if (!yearStats[yearKey]) yearStats[yearKey] = { total: 0, lulus: 0, tolak: 0, proses: 0 };
         yearStats[yearKey].total++;
-        
-        if (row[23] && row[23].toString().includes('LULUS')) {
-          yearStats[yearKey].lulus++;
-        } else if (row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))) {
-          yearStats[yearKey].tolak++;
-        } else {
-          yearStats[yearKey].proses++;
-        }
+        if (row[23] && row[23].toString().includes('LULUS')) yearStats[yearKey].lulus++;
+        else if (row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))) yearStats[yearKey].tolak++;
+        else yearStats[yearKey].proses++;
       }
     }
   });
@@ -1831,190 +1468,108 @@ function getStatisticsData(role, userName) {
   if (role === ROLE_ADMIN) {
     filteredData.forEach(row => {
       const pengesyor = row[12] || 'Tiada Pengesyor';
-      if (!pengesyorStats[pengesyor]) {
-        pengesyorStats[pengesyor] = { total: 0, sokong: 0, tidak_sokong: 0 };
-      }
+      if (!pengesyorStats[pengesyor]) pengesyorStats[pengesyor] = { total: 0, sokong: 0, tidak_sokong: 0 };
       pengesyorStats[pengesyor].total++;
-      
-      if (row[13] && row[13].toString().includes('SOKONG') && !row[13].toString().includes('TIDAK')) {
-        pengesyorStats[pengesyor].sokong++;
-      } else if (row[13] && row[13].toString().includes('TIDAK DISOKONG')) {
-        pengesyorStats[pengesyor].tidak_sokong++;
-      }
+      if (row[13] && row[13].toString().includes('SOKONG') && !row[13].toString().includes('TIDAK')) pengesyorStats[pengesyor].sokong++;
+      else if (row[13] && row[13].toString().includes('TIDAK DISOKONG')) pengesyorStats[pengesyor].tidak_sokong++;
       
       const pelulus = row[25] || 'Tiada Pelulus';
-      if (!pelulusStats[pelulus]) {
-        pelulusStats[pelulus] = { total: 0, lulus: 0, tolak: 0 };
-      }
+      if (!pelulusStats[pelulus]) pelulusStats[pelulus] = { total: 0, lulus: 0, tolak: 0 };
       pelulusStats[pelulus].total++;
-      
-      if (row[23] && row[23].toString().includes('LULUS')) {
-        pelulusStats[pelulus].lulus++;
-      } else if (row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))) {
-        pelulusStats[pelulus].tolak++;
-      }
+      if (row[23] && row[23].toString().includes('LULUS')) pelulusStats[pelulus].lulus++;
+      else if (row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))) pelulusStats[pelulus].tolak++;
     });
   }
   
-  return createJSONOutput({
-    total: total,
-    lulus: lulus,
-    tolak: tolak,
-    proses: proses,
-    monthlyStats: monthlyStats,
-    yearStats: yearStats,
-    pengesyorStats: pengesyorStats,
-    pelulusStats: pelulusStats
-  });
+  return createJSONOutput({ total: total, lulus: lulus, tolak: tolak, proses: proses, monthlyStats: monthlyStats, yearStats: yearStats, pengesyorStats: pengesyorStats, pelulusStats: pelulusStats });
 }
 
-/**
- * Fungsi untuk mendapatkan data permohonan berulang (repeated applications)
- */
 function getRepeatedApplicationsData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
-  
   if (!sheet) return createJSONOutput([]);
   
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return createJSONOutput([]);
-  
+
   const dataRange = sheet.getRange(2, 1, lastRow - 1, TOTAL_COLUMNS);
   const data = dataRange.getDisplayValues();
-  
   const groupedByCIDB = {};
-  
+
   data.forEach((row, index) => {
     if (!row[0] || row[0].toString().trim() === "") return;
-    
     const cidb = row[1] ? row[1].toString().trim() : '';
     if (!cidb) return;
-    
-    if (!groupedByCIDB[cidb]) {
-      groupedByCIDB[cidb] = {
-        cidb: cidb,
-        syarikat: row[0] || '-',
-        rekod: []
-      };
-    }
+    if (!groupedByCIDB[cidb]) groupedByCIDB[cidb] = { cidb: cidb, syarikat: row[0] || '-', rekod: [] };
     
     groupedByCIDB[cidb].rekod.push({
-      row: index + 2,
-      syarikat: row[0],
-      cidb: row[1],
-      gred: row[2],
-      jenis: row[3],
-      start_date: row[7],
-      kelulusan: row[23],
-      tarikh_lulus: row[24],
-      pelulus: row[25]
+      row: index + 2, syarikat: row[0], cidb: row[1], gred: row[2], jenis: row[3], start_date: row[7], kelulusan: row[23], tarikh_lulus: row[24], pelulus: row[25]
     });
   });
-  
+
   const repeatedCompanies = [];
-  
   Object.keys(groupedByCIDB).forEach(cidb => {
     const company = groupedByCIDB[cidb];
-    if (company.rekod.length > 1) {
-      repeatedCompanies.push(company);
-    }
+    if (company.rekod.length > 1) repeatedCompanies.push(company);
   });
-  
+
   repeatedCompanies.sort((a, b) => b.rekod.length - a.rekod.length);
-  
   return createJSONOutput(repeatedCompanies);
 }
 
-/**
- * FUNGSI UTAMA: Ambil Senarai Permohonan dari 'Sheet1' dengan filter role
- * V6.4.1: Kemaskini pemetaan alamat_perniagaan (index 20) dan jenis_konsultansi (index 21)
- * V6.4.5: Kemaskini filter PELULUS - semua permohonan dengan syor_status tidak kosong (telah disyorkan)
- * V6.4.5: Tambah pemetaan ubah_maklumat (index 26) dan ubah_gred (index 27)
- * KEMASKINI: ROLE_KETUA_SEKSYEN memulangkan SEMUA data (tiada penapisan backend)
- */
 function getApplicationsData(role, userName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
-  
   if (!sheet) return createJSONOutput([]);
   
   const lastRow = sheet.getLastRow();
-  
-  let firstEmptyRow = 2; 
-  
+  let firstEmptyRow = 2;
+
   if (lastRow > 1) {
     const columnA = sheet.getRange("A2:A" + lastRow).getValues();
     for (let i = 0; i < columnA.length; i++) {
       if (!columnA[i][0] || columnA[i][0].toString().trim() === "") {
-        firstEmptyRow = i + 2; 
+        firstEmptyRow = i + 2;
         break;
       }
     }
-    if (firstEmptyRow === 2) {
-      firstEmptyRow = lastRow + 1;
-    }
+    if (firstEmptyRow === 2) firstEmptyRow = lastRow + 1;
   }
   
   const cache = CacheService.getScriptCache();
   cache.put("firstEmptyRow_" + SHEET_NAME, firstEmptyRow.toString(), 300);
-  
+
   const dataRange = sheet.getRange(1, 1, lastRow, sheet.getLastColumn());
   const data = dataRange.getDisplayValues();
   const headers = data.shift();
-  
-  let filteredData = data.filter((row, index) => {
-    return row[0] && row[0].toString().trim() !== "";
-  });
+
+  let filteredData = data.filter((row, index) => { return row[0] && row[0].toString().trim() !== ""; });
 
   if (role === ROLE_PENGESYOR && userName) {
-    filteredData = filteredData.filter(row => 
-      row[12] && row[12].toString().toUpperCase() === userName.toUpperCase()
-    );
+    filteredData = filteredData.filter(row => row[12] && row[12].toString().toUpperCase() === userName.toUpperCase());
   } else if (role === ROLE_PELULUS && userName) {
-    // V6.4.5: Pelulus dapat melihat SEMUA permohonan yang telah disyorkan
-    // (syor_status tidak kosong) tanpa perlu memeriksa lajur pelulus
     filteredData = filteredData.filter(row => {
       const syorStatus = row[13];
-      // Hanya tapis berdasarkan syor_status tidak kosong
       return syorStatus && syorStatus.toString().trim() !== "";
     });
-  } else if (role === ROLE_KETUA_SEKSYEN) {
-    // ROLE_KETUA_SEKSYEN: Tiada penapisan backend - pulangkan SEMUA data
-    // Frontend akan menapis mengikut tab yang diperlukan
   }
 
   const jsonData = filteredData.map((row, index) => {
     return {
-      row: index + 2,
-      syarikat: row[0], 
-      cidb: row[1], 
-      gred: row[2], 
-      jenis: row[3],
-      negeri: row[4], 
-      tarikh_surat_terdahulu: row[5], 
-      tatatertib: row[6],
-      start_date: row[7], 
-      syor_lawatan: row[8], 
-      date_submit: row[9],
-      pautan: row[10], 
-      justifikasi: row[11], 
-      pengesyor: row[12],
-      syor_status: row[13], 
-      tarikh_syor: row[14],
-      lawatan_status: row[15], 
-      lawatan_pic: row[16], 
-      lawatan_tarikh: row[17],
-      lawatan_submit_sptb: row[18],
-      lawatan_syor: row[19],
-      alamat_perniagaan: row[20],
-      jenis_konsultansi: row[21],
-      alasan: row[22], 
+      row: index + 2, 
+      syarikat: row[0], cidb: row[1], gred: row[2], jenis: row[3], negeri: row[4], 
+      tarikh_surat_terdahulu: row[5], tatatertib: row[6], start_date: row[7], 
+      syor_lawatan: row[8], date_submit: row[9], pautan: row[10], justifikasi: row[11], 
+      pengesyor: row[12], syor_status: row[13], tarikh_syor: row[14],
+      // P-Q: Status & Tarikh Hantar SPI
+      status_hantar_spi: row[15] || "", 
+      tarikh_hantar_spi: row[16] || "",
+      // R-X
+      lawatan_tarikh: row[17], lawatan_submit_sptb: row[18], lawatan_syor: row[19], 
+      alamat_perniagaan: row[20], jenis_konsultansi: row[21], alasan: row[22], 
       kelulusan: row[23],
-      tarikh_lulus: row[24], 
-      pelulus: row[25],
-      ubah_maklumat: row[26],
-      ubah_gred: row[27]
+      // Y-AB
+      tarikh_lulus: row[24], pelulus: row[25], ubah_maklumat: row[26], ubah_gred: row[27]
     };
   });
   
@@ -2022,27 +1577,19 @@ function getApplicationsData(role, userName) {
 }
 
 // === HELPER FUNCTIONS ===
-
 function findFolderInParent(parentFolder, folderName) {
   try {
     const folders = parentFolder.getFolders();
     while (folders.hasNext()) {
       const folder = folders.next();
-      if (folder.getName() === folderName) {
-        return folder;
-      }
+      if (folder.getName() === folderName) return folder;
     }
     return null;
-  } catch (error) {
-    return null;
-  }
+  } catch (error) { return null; }
 }
 
 function getMonthName(monthNumber) {
-  const monthNames = [
-    'JANUARI', 'FEBRUARI', 'MAC', 'APRIL', 'MEI', 'JUN',
-    'JULAI', 'OGOS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DISEMBER'
-  ];
+  const monthNames = ['JANUARI', 'FEBRUARI', 'MAC', 'APRIL', 'MEI', 'JUN', 'JULAI', 'OGOS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DISEMBER'];
   return monthNames[monthNumber - 1];
 }
 
@@ -2053,9 +1600,7 @@ function formatDateForFolder(dateString) {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
-  } catch (error) {
-    return new Date().toISOString().split('T')[0].replace(/-/g, '-');
-  }
+  } catch (error) { return new Date().toISOString().split('T')[0].replace(/-/g, '-'); }
 }
 
 function logActivity(user, action, description, folderId) {
@@ -2073,181 +1618,89 @@ function logActivity(user, action, description, folderId) {
     const url = folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
     const newRow = [timestamp, user, action, description, folderId || '', url];
     logSheet.appendRow(newRow);
-    
     const lastRow = logSheet.getLastRow();
-    if (lastRow > 1001) {
-      logSheet.deleteRows(2, lastRow - 1001);
-    }
-  } catch (error) {
-    console.error('Error logging activity:', error);
-  }
+    if (lastRow > 1001) logSheet.deleteRows(2, lastRow - 1001);
+  } catch (error) { console.error('Error logging activity:', error); }
 }
 
 function createJSONOutput(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
-/**
- * Fungsi untuk cipta folder dalam USER FOLDER SYSTEM
- * V6.4.5 - KEMASKINI STRUKTUR: User -> Syarikat -> Jenis-Tarikh (TIADA bulan/tahun)
- */
 function handleCreateDriveFolderAction(data) {
   try {
-    // V6.4.5: month_year tidak lagi digunakan
     const companyName = data.company_name;
     const userName = data.user_name;
     const mainFolderId = data.main_folder_id || MAIN_FOLDER_ID;
-    
-    // V6.4.5: appType dalam format "JENIS - DD-MM-YYYY"
     const appType = data.application_type || data.subfolder_name;
-    
-    Logger.log(`[V6.4.5] Creating folder for user: ${userName}, company: ${companyName}, type: ${appType}`);
-    
+
     let mainFolder;
-    try {
-      mainFolder = DriveApp.getFolderById(mainFolderId);
-    } catch (e) {
+    try { mainFolder = DriveApp.getFolderById(mainFolderId); } 
+    catch (e) {
       const folders = DriveApp.getFoldersByName(MAIN_FOLDER_NAME);
-      if (folders.hasNext()) {
-        mainFolder = folders.next();
-      } else {
-        mainFolder = DriveApp.createFolder(MAIN_FOLDER_NAME);
-        Logger.log(`Created main folder: ${MAIN_FOLDER_NAME}`);
-      }
+      if (folders.hasNext()) mainFolder = folders.next();
+      else mainFolder = DriveApp.createFolder(MAIN_FOLDER_NAME);
     }
     
-    // 1. Cari/cipta folder user
     let userFolder = findFolderInParent(mainFolder, userName);
-    if (!userFolder) {
-      userFolder = mainFolder.createFolder(userName);
-      Logger.log(`Created user folder: ${userName}`);
-    }
+    if (!userFolder) userFolder = mainFolder.createFolder(userName);
     
-    // 2. V6.4.5: Cari/cipta folder syarikat TERUS di dalam userFolder
     let companyFolder = findFolderInParent(userFolder, companyName);
-    if (!companyFolder) {
-      companyFolder = userFolder.createFolder(companyName);
-      Logger.log(`Created company folder: ${companyName} inside ${userName}`);
-    }
+    if (!companyFolder) companyFolder = userFolder.createFolder(companyName);
     
-    // 3. V6.4.5: Cari/cipta folder jenis-tarikh di dalam companyFolder
     let typeFolder = findFolderInParent(companyFolder, appType);
-    if (!typeFolder) {
-      typeFolder = companyFolder.createFolder(appType);
-      Logger.log(`Created type folder: ${appType} inside ${companyName}`);
-    }
+    if (!typeFolder) typeFolder = companyFolder.createFolder(appType);
     
-    logActivity(userName, 'CREATE_FOLDER_USER', 
-                `Folder dicipta (V6.4.5): ${companyName} > ${appType}`, 
-                typeFolder.getId());
-    
-    // V6.4.5: Pulangkan URL typeFolder (bukan companyFolder)
-    return createJSONOutput({
-      success: true,
-      folder_url: typeFolder.getUrl(),
-      folder_id: typeFolder.getId(),
-      folder_path: `${MAIN_FOLDER_NAME} > ${userName} > ${companyName} > ${appType}`,
-      user_folder_url: userFolder.getUrl(),
-      message: `Folder berjaya dicipta dalam sistem Folder User (V6.4.5)`
-    });
-    
+    logActivity(userName, 'CREATE_FOLDER_USER', `Folder dicipta (V6.4.5): ${companyName} > ${appType}`, typeFolder.getId());
+
+    return createJSONOutput({ success: true, folder_url: typeFolder.getUrl(), folder_id: typeFolder.getId(), folder_path: `${MAIN_FOLDER_NAME} > ${userName} > ${companyName} > ${appType}`, user_folder_url: userFolder.getUrl(), message: `Folder berjaya dicipta` });
   } catch (err) {
-    Logger.error(`Error creating user folder: ${err.toString()}`);
-    return createJSONOutput({
-      success: false,
-      message: `Gagal mencipta folder: ${err.toString()}`
-    });
+    return createJSONOutput({ success: false, message: `Gagal mencipta folder: ${err.toString()}` });
   }
 }
 
-/**
- * Fungsi untuk cipta folder structure dalam User Folder (untuk auto-create semasa save)
- * V6.4.5 - KEMASKINI STRUKTUR: User -> Syarikat -> Jenis-Tarikh (TIADA bulan/tahun)
- */
 function createUserFolderStructure(syarikat, startDate, jenisPermohonan, pengesyor) {
   try {
     const dateObj = new Date(startDate);
     const formattedDate = formatDateForFolder(startDate);
-    
-    // V6.4.5: Nama folder jenis permohonan = "JENIS - DD-MM-YYYY"
     const typeFolderName = `${jenisPermohonan.toUpperCase()} - ${formattedDate}`;
-    
-    // V6.4.5: Nama folder syarikat = nama syarikat SAHAJA (tanpa tarikh)
     const companyFolderName = syarikat.toUpperCase();
     
     let mainFolder;
-    try {
-      mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID);
-    } catch (e) {
+    try { mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID); } 
+    catch (e) {
       const folders = DriveApp.getFoldersByName(MAIN_FOLDER_NAME);
-      if (folders.hasNext()) {
-        mainFolder = folders.next();
-      } else {
-        mainFolder = DriveApp.createFolder(MAIN_FOLDER_NAME);
-      }
+      if (folders.hasNext()) mainFolder = folders.next();
+      else mainFolder = DriveApp.createFolder(MAIN_FOLDER_NAME);
     }
     
-    // 1. Cari/cipta folder user
     let userFolder = findFolderInParent(mainFolder, pengesyor);
-    if (!userFolder) {
-      userFolder = mainFolder.createFolder(pengesyor);
-    }
+    if (!userFolder) userFolder = mainFolder.createFolder(pengesyor);
     
-    // 2. V6.4.5: Cari/cipta folder syarikat TERUS di dalam userFolder
     let companyFolder = findFolderInParent(userFolder, companyFolderName);
-    if (!companyFolder) {
-      companyFolder = userFolder.createFolder(companyFolderName);
-    }
+    if (!companyFolder) companyFolder = userFolder.createFolder(companyFolderName);
     
-    // 3. V6.4.5: Cari/cipta folder jenis-tarikh di dalam companyFolder
     let typeFolder = findFolderInParent(companyFolder, typeFolderName);
-    if (!typeFolder) {
-      typeFolder = companyFolder.createFolder(typeFolderName);
-    }
+    if (!typeFolder) typeFolder = companyFolder.createFolder(typeFolderName);
     
-    logActivity(pengesyor, 'AUTO_CREATE_USER_FOLDER', 
-                `Folder auto-dicipta (V6.4.5): ${companyFolderName} > ${typeFolderName}`, 
-                typeFolder.getId());
-    
-    // V6.4.5: Pulangkan URL typeFolder
-    return {
-      success: true,
-      folderUrl: typeFolder.getUrl(),
-      userFolderUrl: userFolder.getUrl(),
-      folderId: typeFolder.getId(),
-      folderName: typeFolderName
-    };
-    
+    logActivity(pengesyor, 'AUTO_CREATE_USER_FOLDER', `Folder auto-dicipta: ${companyFolderName} > ${typeFolderName}`, typeFolder.getId());
+
+    return { success: true, folderUrl: typeFolder.getUrl(), userFolderUrl: userFolder.getUrl(), folderId: typeFolder.getId(), folderName: typeFolderName };
   } catch (error) {
-    Logger.error(`Error in createUserFolderStructure: ${error.toString()}`);
-    return {
-      success: false,
-      error: error.toString()
-    };
+    return { success: false, error: error.toString() };
   }
 }
 
 // =========================================================================
-// V6.4.9: FUNGSI UJIAN UNTUK AUTH DAN EMAIL
+// TEST FUNCTIONS
 // =========================================================================
-
-/**
- * Fungsi untuk menguji sistem authentication
- * DIUBAH: Kini memerlukan email sebagai parameter
- */
 function testCheckAuth() {
-  // Ujian dengan email yang sah
   const testEmail = "pengesyor@kuskop.gov.my";
   const result = handleCheckAuth(testEmail);
-  console.log("Test CheckAuth Result:");
   console.log(result.getContent());
   return result;
 }
 
-/**
- * Fungsi untuk menguji pencarian pengguna berdasarkan emel
- */
 function testFindUserByEmail() {
   const testEmail = "pengesyor@kuskop.gov.my";
   const authResult = getAuthenticatedUserEmail(testEmail);
@@ -2255,208 +1708,402 @@ function testFindUserByEmail() {
     const user = findUserByEmail(authResult.email);
     console.log("User found:", JSON.stringify(user));
     return user;
-  } else {
-    console.log("Auth failed:", authResult.error);
-    return null;
   }
+  return null;
 }
 
-// Fungsi-fungsi test lain
 function testUserFolder() {
-  const result = handleCreateDriveFolderAction({
-    application_type: "BARU - 21-04-2026",
-    company_name: "SYARIKAT TEST",
-    user_name: "Zariff Fahmi",
-    main_folder_id: MAIN_FOLDER_ID
-  });
-  
+  const result = handleCreateDriveFolderAction({ application_type: "BARU - 21-04-2026", company_name: "SYARIKAT TEST", user_name: "Zariff Fahmi", main_folder_id: MAIN_FOLDER_ID });
   console.log(JSON.stringify(result));
   return result;
 }
 
 function testGetRepeatedApplications() {
   const result = getRepeatedApplicationsData();
-  const parsed = JSON.parse(result.getContent());
-  console.log(`Found ${parsed.length} companies with repeated applications`);
+  console.log(result.getContent());
   return result;
 }
 
 function testGetStatistics() {
   const result = getStatisticsData(ROLE_PENGARAH, "");
-  console.log(JSON.stringify(result));
+  console.log(result.getContent());
   return result;
 }
 
 function testDeleteRecord() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
-  
-  const testData = {
-    action: 'deleteRecord',
-    row: 2,
-    deleteType: 'padam_syor',
-    user: 'Test User'
-  };
-  
+  const testData = { action: 'deleteRecord', row: 2, deleteType: 'padam_syor', user: 'Test User' };
   const result = handleDeleteRecord(testData, sheet);
-  console.log(JSON.stringify(result));
-  return result;
-}
-
-function testCetakDanSimpanPDF() {
-  const testData = {
-    action: 'cetak_dan_simpan_pdf',
-    htmlContent: '<div class="print-header"><h1>Borang Semakan</h1><p>Ini adalah kandungan ujian.</p></div>',
-    company_name: 'SYARIKAT TEST',
-    user_name: 'Zariff Fahmi',
-    application_type: 'BARU - 21-04-2026',
-    user_color: '#ff6b35'
-  };
-  
-  const result = handleCetakDanSimpanPDF(testData);
-  console.log(JSON.stringify(result));
-  return result;
-}
-
-// =========================================================================
-// V6.4.8: FUNGSI UJIAN UNTUK AI PROCESSING
-// =========================================================================
-
-/**
- * Fungsi untuk menguji AI Processing dengan teks ujian
- */
-function testProcessAI() {
-  const testText = "SYARIKAT ABC SDN BHD (0120201118-KD061300)\nGred: G7\nAlamat: No. 123, Jalan Test, Kuala Lumpur";
-  
-  const testData = {
-    action: 'processAI',
-    type: 'borang',
-    text: testText
-  };
-  
-  const result = handleProcessAI(testData);
-  console.log("Test AI Processing Result:");
   console.log(result.getContent());
   return result;
 }
 
-/**
- * Fungsi UJIAN PERMISI (V6.4.5)
- * Fungsi untuk menguji dan membenarkan skop penghantaran emel
- * Jalankan fungsi ini sekali di Apps Script editor untuk mendapatkan kebenaran MailApp
- */
+function testCetakDanSimpanPDF() {
+  const testData = { action: 'cetak_dan_simpan_pdf', htmlContent: '<div class="print-header"><h1>Borang Semakan</h1><p>Ini adalah kandungan ujian.</p></div>', company_name: 'SYARIKAT TEST', user_name: 'Zariff Fahmi', application_type: 'BARU - 21-04-2026', user_color: '#ff6b35' };
+  const result = handleCetakDanSimpanPDF(testData);
+  console.log(result.getContent());
+  return result;
+}
+
+function testProcessAI() {
+  const testText = "SYARIKAT ABC SDN BHD (0120201118-KD061300)\nGred: G7\nAlamat: No. 123, Jalan Test, Kuala Lumpur";
+  const testData = { action: 'processAI', type: 'borang', text: testText };
+  const result = handleProcessAI(testData);
+  console.log(result.getContent());
+  return result;
+}
+
 function testSendEmailPermission() {
   try {
     const userEmail = Session.getActiveUser().getEmail();
-    MailApp.sendEmail({
-      to: userEmail,
-      subject: "Test Permission V6.4.5",
-      body: "Test sahaja.",
-      name: EMAIL_SENDER_NAME
-    });
-    
-    console.log(`[V6.4.5] Test email sent successfully to: ${userEmail} from ${EMAIL_SENDER_NAME}`);
-    logActivity("System", "TEST_EMAIL_PERMISSION", `Ujian kebenaran emel berjaya - dihantar ke ${userEmail} dari ${EMAIL_SENDER_NAME}`, "");
-    
-    return createJSONOutput({
-      success: true,
-      message: `Emel ujian berjaya dihantar ke ${userEmail} dari ${EMAIL_SENDER_NAME}. Kebenaran MailApp telah diberikan.`
-    });
+    MailApp.sendEmail({ to: userEmail, subject: "Test Permission V6.4.5", body: "Test sahaja.", name: EMAIL_SENDER_NAME });
+    return createJSONOutput({ success: true, message: `Emel ujian berjaya dihantar ke ${userEmail} dari ${EMAIL_SENDER_NAME}.` });
   } catch (error) {
-    console.error(`[V6.4.5] Test email failed: ${error.toString()}`);
-    logActivity("System", "ERROR_TEST_EMAIL", `Ujian kebenaran emel gagal: ${error.toString()}`, "");
-    
-    return createJSONOutput({
-      success: false,
-      message: `Gagal menghantar emel ujian: ${error.toString()}. Sila pastikan skop MailApp dibenarkan.`
-    });
+    return createJSONOutput({ success: false, message: `Gagal menghantar emel ujian: ${error.toString()}` });
   }
 }
 
-/**
- * FUNGSI UJIAN SPI EMAIL (V6.4.5)
- * Fungsi untuk menguji penghantaran emel SPI secara manual
- */
 function testSendSPIEmail() {
-  const testData = {
-    syarikat: "SYARIKAT UJIAN SDN BHD",
-    cidb: "CIDB12345678",
-    gred: "G7",
-    jenis: "BARU",
-    alamat_perniagaan: "No. 123, Jalan Test, Taman Ujian, 50000 Kuala Lumpur",
-    pengesyor: "Ahmad bin Abdullah",
-    justifikasi: "Ini adalah justifikasi ujian untuk lawatan tapak. Pemeriksaan tapak diperlukan untuk pengesahan status projek.",
-    pautan: "https://drive.google.com/drive/folders/test123",
-    date_submit: "25-04-2026"
-  };
-  
+  const testData = { syarikat: "SYARIKAT UJIAN SDN BHD", cidb: "CIDB12345678", gred: "G7", jenis: "BARU", alamat_perniagaan: "No. 123, Jalan Test, Taman Ujian, 50000 Kuala Lumpur", pengesyor: "Ahmad bin Abdullah", justifikasi: "Ini adalah justifikasi ujian", pautan: "https://drive.google.com", date_submit: "25-04-2026" };
   const result = sendAutoEmailSPI(testData);
   console.log(JSON.stringify(result));
   return result;
 }
 
-/**
- * FUNGSI UJIAN CHECK AUTH DENGAN EMAIL (V6.4.9)
- * Fungsi untuk menguji authentication dengan email yang dihantar dari frontend
- */
 function testCheckAuthWithEmail() {
-  // Ujian dengan email domain yang dibenarkan
   const testEmail1 = "pengesyor@kuskop.gov.my";
-  console.log("Testing with authorized email: " + testEmail1);
   const result1 = handleCheckAuth(testEmail1);
   console.log(result1.getContent());
-  
-  // Ujian dengan email domain tidak dibenarkan
-  const testEmail2 = "user@gmail.com";
-  console.log("Testing with unauthorized email: " + testEmail2);
-  const result2 = handleCheckAuth(testEmail2);
-  console.log(result2.getContent());
-  
-  // Ujian dengan email kosong
-  const testEmail3 = "";
-  console.log("Testing with empty email");
-  const result3 = handleCheckAuth(testEmail3);
-  console.log(result3.getContent());
-  
   return "All tests completed";
 }
 
-/**
- * FUNGSI UJIAN DOGET DENGAN CHECK AUTH (V6.4.9)
- * Fungsi untuk menguji doGet dengan action checkAuth dan parameter email
- */
 function testDoGetCheckAuth() {
-  const e = {
-    parameter: {
-      action: "checkAuth",
-      email: "pengesyor@kuskop.gov.my"
-    }
-  };
-  
+  const e = { parameter: { action: "checkAuth", email: "pengesyor@kuskop.gov.my" } };
   const result = doGet(e);
-  console.log("doGet with checkAuth result:");
   console.log(result.getContent());
   return result;
 }
 
-/**
- * FUNGSI UJIAN DOPOST DENGAN CHECK AUTH (V6.4.9)
- * Fungsi untuk menguji doPost dengan action checkAuth dan email dalam payload JSON
- */
 function testDoPostCheckAuth() {
-  const payload = {
-    action: "checkAuth",
-    email: "pengesyor@kuskop.gov.my"
-  };
-  
-  const e = {
-    postData: {
-      contents: JSON.stringify(payload)
-    }
-  };
-  
+  const payload = { action: "checkAuth", email: "pengesyor@kuskop.gov.my" };
+  const e = { postData: { contents: JSON.stringify(payload) } };
   const result = doPost(e);
-  console.log("doPost with checkAuth result:");
   console.log(result.getContent());
   return result;
+}
+
+// =========================================================================
+// FUNGSI BERJADUAL: KUMPULAN EMEL PEMUTIHAN (SETIAP JUMAAT 11 PAGI - Kitaran 2 Minggu)
+// =========================================================================
+function addToPemutihanQueue(emailData) {
+  const props = PropertiesService.getScriptProperties();
+  let queue = [];
+  const existingQueue = props.getProperty('PEMUTIHAN_QUEUE');
+  if (existingQueue) queue = JSON.parse(existingQueue);
+  const isDuplicate = queue.some(item => item.syarikat === emailData.syarikat);
+  if (!isDuplicate) {
+    queue.push(emailData);
+    props.setProperty('PEMUTIHAN_QUEUE', JSON.stringify(queue));
+  }
+}
+
+function processPemutihanQueue() {
+  const props = PropertiesService.getScriptProperties();
+  const existingQueue = props.getProperty('PEMUTIHAN_QUEUE');
+  if (!existingQueue) return; 
+  const queue = JSON.parse(existingQueue);
+  if (queue.length === 0) return; 
+
+  let rowsHtml = '';
+  let textList = '';
+  queue.forEach((data, index) => {
+    rowsHtml += `
+      <tr>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${index + 1}</td>
+        <td style="padding:10px; border:1px solid #ddd;"><strong>${data.syarikat}</strong></td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${data.cidb}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${data.gred}</td>
+        <td style="padding:10px; border:1px solid #ddd;">${data.alamat_perniagaan || 'Tiada'}</td>
+        <td style="padding:10px; border:1px solid #ddd;">${data.justifikasi || 'Tiada'}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${data.pengesyor}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;"><a href="${data.pautan}" style="color:#1a73e8; font-weight:bold;">Buka Drive</a></td>
+      </tr>
+    `;
+    textList += `${index + 1}. ${data.syarikat}\n   CIDB: ${data.cidb} | Gred: ${data.gred} | Pengesyor: ${data.pengesyor}\n   Alamat Perniagaan: ${data.alamat_perniagaan || 'Tiada'}\n   Justifikasi: ${data.justifikasi || 'Tiada'}\n\n`;
+  });
+
+  const subject = `Makluman Dwi-Mingguan: ${queue.length} Permohonan Lawatan Premis (PEMUTIHAN)`;
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    .header { background: #e74c3c; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-top: none; }
+    .footer { margin-top: 20px; padding-top: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2 style="margin: 0;">⚠️ MAKLUMAN DWI-MINGGUAN (PEMUTIHAN)</h2>
+      <p style="margin: 5px 0 0 0;">Sistem Bersepadu SPTB</p>
+    </div>
+    <div class="content">
+      <p>Tuan/Puan,</p>
+      <p>Berikut adalah senarai <strong>${queue.length} permohonan lawatan (PEMUTIHAN)</strong> yang telah disyorkan dikumpul dalam tempoh 2 minggu ini. Sila ambil tindakan sewajarnya.</p>
+      <table style="width:100%; border-collapse:collapse; margin: 20px 0; background:white;">
+        <thead style="background:#f1f5f9; color:#1e293b;">
+          <tr>
+            <th style="padding:10px; border:1px solid #ddd;">Bil</th>
+            <th style="padding:10px; border:1px solid #ddd;">Nama Syarikat</th>
+            <th style="padding:10px; border:1px solid #ddd;">No. CIDB</th>
+            <th style="padding:10px; border:1px solid #ddd;">Gred</th>
+            <th style="padding:10px; border:1px solid #ddd;">Alamat Perniagaan</th>
+            <th style="padding:10px; border:1px solid #ddd;">Justifikasi Lawatan</th>
+            <th style="padding:10px; border:1px solid #ddd;">Pengesyor</th>
+            <th style="padding:10px; border:1px solid #ddd;">Pautan Drive</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <p style="margin-top: 20px;"><em>*** Emel ini dijana secara automatik setiap hari Jumaat jam 11:00 Pagi (Setiap 2 Minggu). Sila jangan balas emel ini. ***</em></p>
+    </div>
+    <div class="footer">
+      <p>Sistem Bersepadu SPTB<br>© ${new Date().getFullYear()} PKK. Hak Cipta Terpelihara.</p>
+      <p>Dijana pada: ${new Date().toLocaleString('ms-MY')}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const plainBody = `NOTIS DWI-MINGGUAN LAWATAN SPI (PEMUTIHAN)\n\nBerikut adalah senarai ${queue.length} permohonan pemutihan minggu ini:\n\n${textList}\n*** Emel automatik oleh Sistem STB ***`;
+
+  try {
+    MailApp.sendEmail({ to: EMAIL_TO_SPI, cc: EMAIL_CC_SPTB, subject: subject, htmlBody: htmlBody, body: plainBody, name: EMAIL_SENDER_NAME });
+    
+    // === TAMBAH KOD INI DI SINI ===
+    updateSPIStatusInSheet(queue);
+    // =============================
+    
+    props.deleteProperty('PEMUTIHAN_QUEUE');
+    logActivity('System', 'BATCH_EMAIL_PEMUTIHAN', `Berjaya menghantar emel pukal dwi-mingguan pemutihan untuk ${queue.length} syarikat.`, '');
+  } catch (error) {
+    console.error("Gagal menghantar emel pukal dwi-mingguan pemutihan:", error);
+    logActivity('System', 'ERROR_BATCH_EMAIL', `Gagal menghantar emel pukal dwi-mingguan: ${error.toString()}`, '');
+  }
+}
+
+function setupPemutihanCronJob() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'processPemutihanQueue') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger('processPemutihanQueue')
+    .timeBased()
+    .everyWeeks(2) 
+    .onWeekDay(ScriptApp.WeekDay.FRIDAY) 
+    .atHour(11) 
+    .create();
+  console.log("✅ Cron job Dwi-Mingguan Pemutihan berjaya ditetapkan setiap hari Jumaat jam 11 pagi, setiap 2 minggu.");
+}
+
+// =========================================================================
+// FUNGSI BERJADUAL: KUMPULAN EMEL SIASAT BIASA (SETIAP HARI BEKERJA 10 PAGI)
+// =========================================================================
+function addToSiasatQueue(emailData) {
+  const props = PropertiesService.getScriptProperties();
+  let queue = [];
+  const existingQueue = props.getProperty('SIASAT_QUEUE');
+  if (existingQueue) queue = JSON.parse(existingQueue);
+  const isDuplicate = queue.some(item => item.syarikat === emailData.syarikat);
+  if (!isDuplicate) {
+    queue.push(emailData);
+    props.setProperty('SIASAT_QUEUE', JSON.stringify(queue));
+  }
+}
+
+function processSiasatQueue() {
+  const hariSemasa = parseInt(Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "u"));
+  if (hariSemasa === 6 || hariSemasa === 7) {
+    console.log("Hari ini adalah hujung minggu (Sabtu/Ahad). Penghantaran Siasat Biasa ditangguhkan ke hari Isnin.");
+    return; 
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  const existingQueue = props.getProperty('SIASAT_QUEUE');
+  if (!existingQueue) return; 
+  const queue = JSON.parse(existingQueue);
+  if (queue.length === 0) return; 
+
+  let rowsHtml = '';
+  let textList = '';
+  
+  queue.forEach((data, index) => {
+    rowsHtml += `
+      <tr>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${index + 1}</td>
+        <td style="padding:10px; border:1px solid #ddd;"><strong>${data.syarikat}</strong></td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${data.cidb}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${data.gred}</td>
+        <td style="padding:10px; border:1px solid #ddd;">${data.alamat_perniagaan || 'Tiada'}</td>
+        <td style="padding:10px; border:1px solid #ddd;">${data.justifikasi || 'Tiada'}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${data.pengesyor}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;"><a href="${data.pautan}" style="color:#1a73e8; font-weight:bold;">Buka Drive</a></td>
+      </tr>
+    `;
+    textList += `${index + 1}. ${data.syarikat}\n   CIDB: ${data.cidb} | Gred: ${data.gred} | Pengesyor: ${data.pengesyor}\n   Alamat Perniagaan: ${data.alamat_perniagaan || 'Tiada'}\n   Justifikasi: ${data.justifikasi || 'Tiada'}\n\n`;
+  });
+
+  const subject = `Makluman Harian: ${queue.length} Permohonan Lawatan Premis (Siasat Biasa)`;
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    .header { background: #3498db; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-top: none; }
+    .footer { margin-top: 20px; padding-top: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2 style="margin: 0;">📋 MAKLUMAN HARIAN (SIASAT BIASA)</h2>
+      <p style="margin: 5px 0 0 0;">Sistem Bersepadu SPTB</p>
+    </div>
+    <div class="content">
+      <p>Tuan/Puan,</p>
+      <p>Berikut adalah senarai <strong>${queue.length} permohonan lawatan (SIASAT BIASA)</strong> yang telah disyorkan. Sila ambil tindakan sewajarnya.</p>
+      <table style="width:100%; border-collapse:collapse; margin: 20px 0; background:white;">
+        <thead style="background:#f1f5f9; color:#1e293b;">
+          <tr>
+            <th style="padding:10px; border:1px solid #ddd;">Bil</th>
+            <th style="padding:10px; border:1px solid #ddd;">Nama Syarikat</th>
+            <th style="padding:10px; border:1px solid #ddd;">No. CIDB</th>
+            <th style="padding:10px; border:1px solid #ddd;">Gred</th>
+            <th style="padding:10px; border:1px solid #ddd;">Alamat Perniagaan</th>
+            <th style="padding:10px; border:1px solid #ddd;">Justifikasi Lawatan</th>
+            <th style="padding:10px; border:1px solid #ddd;">Pengesyor</th>
+            <th style="padding:10px; border:1px solid #ddd;">Pautan Drive</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <p style="margin-top: 20px;"><em>*** Emel ini dijana secara automatik setiap hari bekerja jam 10:00 Pagi. Sila jangan balas emel ini. ***</em></p>
+    </div>
+    <div class="footer">
+      <p>Sistem Bersepadu SPTB<br>© ${new Date().getFullYear()} PKK. Hak Cipta Terpelihara.</p>
+      <p>Dijana pada: ${new Date().toLocaleString('ms-MY')}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const plainBody = `NOTIS HARIAN LAWATAN SPI\n\nSenarai ${queue.length} permohonan siasat biasa hari ini:\n\n${textList}\n*** Emel automatik oleh Sistem STB ***`;
+
+  try {
+    MailApp.sendEmail({ to: EMAIL_TO_SPI, cc: EMAIL_CC_SPTB, subject: subject, htmlBody: htmlBody, body: plainBody, name: EMAIL_SENDER_NAME });
+    
+    // === TAMBAH KOD INI DI SINI ===
+    updateSPIStatusInSheet(queue);
+    // =============================
+    
+    props.deleteProperty('SIASAT_QUEUE');
+    logActivity('System', 'BATCH_EMAIL_SIASAT', `Berjaya menghantar emel harian siasat untuk ${queue.length} syarikat.`, '');
+  } catch (error) {
+    console.error("Gagal menghantar emel harian siasat:", error);
+    logActivity('System', 'ERROR_BATCH_EMAIL_SIASAT', `Ralat emel harian: ${error.toString()}`, '');
+  }
+}
+
+function setupSiasatCronJob() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'processSiasatQueue') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger('processSiasatQueue')
+    .timeBased()
+    .everyDays(1)
+    .atHour(10) 
+    .create();
+  console.log("✅ Cron job Siasat Biasa berjaya ditetapkan setiap hari jam 10 pagi.");
+}
+
+// =========================================================================
+// FUNGSI KHAS: LIHAT SENARAI QUEUE (BARISAN GILIR)
+// =========================================================================
+
+function lihatSenaraiQueue() {
+  const props = PropertiesService.getScriptProperties();
+
+  console.log("=== QUEUE PEMUTIHAN (JUMAAT 11 PAGI SETIAP 2 MINGGU) ===");
+  const pemutihanQ = props.getProperty('PEMUTIHAN_QUEUE');
+  if (pemutihanQ) {
+    const pData = JSON.parse(pemutihanQ);
+    console.log(`Terdapat ${pData.length} syarikat menunggu:`);
+    pData.forEach((item, i) => {
+      console.log(`${i+1}. ${item.syarikat} (CIDB: ${item.cidb}) - Pengesyor: ${item.pengesyor}`);
+    });
+  } else {
+    console.log("Tiada data dalam queue Pemutihan.");
+  }
+
+  console.log("\n=== QUEUE SIASAT BIASA (HARI BEKERJA 10 PAGI) ===");
+  const siasatQ = props.getProperty('SIASAT_QUEUE');
+  if (siasatQ) {
+    const sData = JSON.parse(siasatQ);
+    console.log(`Terdapat ${sData.length} syarikat menunggu:`);
+    sData.forEach((item, i) => {
+      console.log(`${i+1}. ${item.syarikat} (CIDB: ${item.cidb}) - Pengesyor: ${item.pengesyor}`);
+    });
+  } else {
+    console.log("Tiada data dalam queue Siasat Biasa.");
+  }
+}
+
+// =========================================================================
+// FUNGSI HELPER BARU
+// =========================================================================
+
+function updateSPIStatusInSheet(queueItems) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "dd/MM/yyyy HH:mm:ss");
+  
+  queueItems.forEach(item => {
+    if (item.row) {
+      try {
+         // Update kolum P (16) & Q (17)
+         sheet.getRange(item.row, 16, 1, 2).setValues([["TELAH DIHANTAR", timestamp]]);
+      } catch(e) {
+         console.error("Gagal update status sheet untuk baris: " + item.row);
+      }
+    }
+  });
+}
+
+function removeFromQueue(syarikatName, queueName) {
+  const props = PropertiesService.getScriptProperties();
+  const qStr = props.getProperty(queueName);
+  if (qStr) {
+    let queue = JSON.parse(qStr);
+    const initLength = queue.length;
+    queue = queue.filter(item => item.syarikat !== syarikatName);
+    if (queue.length !== initLength) {
+      props.setProperty(queueName, JSON.stringify(queue));
+      console.log(`[Queue] Dibuang: ${syarikatName} dari ${queueName}`);
+    }
+  }
 }
