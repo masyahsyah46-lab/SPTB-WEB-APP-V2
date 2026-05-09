@@ -4837,16 +4837,7 @@ async function handleCredentialResponse(response) {
       if (storage.stb_current_history_jenis_filter) {
         currentHistoryJenisFilter = storage.stb_current_history_jenis_filter;
       }
-      
-      if (storage.stb_music_playing) {
-        isMusicPlaying = storage.stb_music_playing;
-        updateMusicButtonState(isMusicPlaying);
-      }
-      
-      if (storage.stb_bgm_volume !== undefined) {
-        bgmVolume = storage.stb_bgm_volume;
-      }
-      
+            
       if (storage.stb_sfx_volume !== undefined) {
         sfxVolume = storage.stb_sfx_volume;
       }
@@ -9284,9 +9275,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       updateDraftFilterButtons();
       updateSubmittedFilterButtons();
       updateHistoryFilterButtons();
-      updateMusicButtonState(isMusicPlaying);
-      if (bgmVolumeSlider) bgmVolumeSlider.value = bgmVolume;
-      if (bgmVolumeValue) bgmVolumeValue.textContent = Math.round(bgmVolume * 100) + '%';
+      
+      // HANYA TINGGALKAN SFX SAHAJA
       if (sfxVolumeSlider) sfxVolumeSlider.value = sfxVolume;
       if (sfxVolumeValue) sfxVolumeValue.textContent = Math.round(sfxVolume * 100) + '%';
     }
