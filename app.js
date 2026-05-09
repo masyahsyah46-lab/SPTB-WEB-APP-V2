@@ -1313,7 +1313,7 @@ async function handleCredentialResponse(response) {
             if (el) {
               if (el.type === 'checkbox' || el.type === 'radio') {
                 el.checked = fields[key];
-              } else {
+              } else if (el.type !== 'file') { // <-- TAMBAH SYARAT INI
                 el.value = fields[key];
               }
             }
@@ -1369,7 +1369,7 @@ async function handleCredentialResponse(response) {
             if (el) {
               if (el.type === 'checkbox' || el.type === 'radio') {
                 el.checked = fields[key];
-              } else {
+              } else if (el.type !== 'file') { // <-- TAMBAH SYARAT INI
                 el.value = fields[key];
               }
             }
@@ -6233,7 +6233,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       if (el.id && !el.id.startsWith('login')) {
         if (el.type === 'checkbox' || el.type === 'radio') {
           state[el.id] = el.checked;
-        } else {
+        } else if (el.type !== 'file') { // <-- TAMBAH SYARAT INI
           state[el.id] = el.value;
         }
       }
@@ -10373,6 +10373,15 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   
   if (queueSpiClose) {
       queueSpiClose.addEventListener('click', () => {
+          queueSpiModal.classList.remove('show');
+          setTimeout(() => queueSpiModal.style.display = 'none', 300);
+      });
+  }
+
+  // === TAMBAH KOD INI DI BAWAHNYA ===
+  const btnTutupQueueSPI = document.getElementById('btnTutupQueueSPI');
+  if (btnTutupQueueSPI) {
+      btnTutupQueueSPI.addEventListener('click', () => {
           queueSpiModal.classList.remove('show');
           setTimeout(() => queueSpiModal.style.display = 'none', 300);
       });
