@@ -6348,6 +6348,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         <button class="tab-btn" data-target="stb"><span class="tab-icon">✓</span><span class="tab-text">Borang Semakan</span></button>
         <button class="tab-btn" data-target="db"><span class="tab-icon">📂</span><span class="tab-text">Input Database</span></button>
         <button class="tab-btn" data-target="drafts"><span class="tab-icon">📋</span><span class="tab-text">Belum Hantar</span></button>
+        <button class="tab-btn" data-target="submitted"><span class="tab-icon">✅</span><span class="tab-text">Telah Disyor</span></button>
       `;
       
       const nameField = document.getElementById('db_pengesyor');
@@ -6357,7 +6358,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       }
       
       // Kemas kini senarai tab yang dibenarkan
-      if(!activeTab || !['dashboard','tab-tapisan','tab-bakul','stb','db','drafts','submitted', 'profile'].includes(activeTab)) {
+      if(!activeTab || !['dashboard','tab-tapisan','tab-bakul','stb','db','drafts','submitted', 'profile', 'youtube'].includes(activeTab)) {
         activeTab = 'dashboard';
       }
 
@@ -6375,7 +6376,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const pelulusNamaField = document.getElementById('pelulus_nama');
       if (pelulusNamaField) pelulusNamaField.value = currentUser.name;
       
-      if(!activeTab || !['dashboard','inbox','pelulus-view','pelulus-action','history'].includes(activeTab)) {
+      if(!activeTab || !['dashboard','inbox','pelulus-view','pelulus-action','history', 'youtube'].includes(activeTab)) {
         activeTab = 'dashboard';
       }
       
