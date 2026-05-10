@@ -6647,6 +6647,14 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       if (tabYoutube) {
         tabYoutube.style.display = 'block';
         tabYoutube.classList.add('active');
+        
+        // --- KOD TAMBAHAN: Muatkan cache YouTube secara automatik ---
+        const youtubeContainer = document.getElementById('youtubeResults');
+        // Hanya panggil fungsi jika bekas (container) video masih kosong
+        if (youtubeContainer && youtubeContainer.children.length === 0) {
+             loadRecentYoutubeCache();
+        }
+        // -----------------------------------------------------------
       }
     }
     // =========================================================
@@ -10452,6 +10460,47 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
           };
           container.appendChild(card);
       });
+  }
+  // =========================================================================
+  // FUNGSI PAPAR VIDEO DARI CACHE SEBELUM CARIAN
+  // =========================================================================
+  async function loadRecentYoutubeCache() {
+      if (!dbFirestore) return;
+      
+      try {
+          // Ambil 1 cache carian yang paling terkini dari Firebase (berdasarkan timestamp)
+          const cacheSnapshot = await dbFirestore.collection("youtube_cache")
+              .orderBy("timestamp", "desc")
+              .limit(1)
+              .get();
+
+          if (!cacheSnapshot.empty) {
+              const cacheData = cacheSnapshot.docs[0].data();
+              // Semak jika cache belum melepasi 30 hari
+              const isFresh = (Date.now() - cacheData.timestamp) < (30 * 24 * 60 * 60 * 1000); 
+              
+              if (isFresh && cacheData.results && cacheData.results.length > 0) {
+                  console.log("Memuatkan video carian terakhir (" + cacheData.query + ") dari cache...");
+                  
+                  // Masukkan kata kunci ke dalam kotak carian sebagai rujukan
+                  const searchInput = document.getElementById('youtubeSearchInput');
+                  if (searchInput && !searchInput.value) {
+                      searchInput.placeholder = "Carian terakhir: " + cacheData.query;
+                  }
+                  
+                  // Paparkan video
+                  displayYoutubeResults(cacheData.results);
+              }
+          } else {
+              // Jika pangkalan data cache masih kosong (pengguna baru pertama kali guna)
+              const container = document.getElementById('youtubeResults');
+              if (container) {
+                  container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #64748b;">Sila masukkan carian di kotak atas. Video akan dipaparkan di sini.</div>';
+              }
+          }
+      } catch (error) {
+          console.warn("Gagal memuatkan cache awal YouTube:", error);
+      }
   }
 
 }); // <--- PENUTUP UTAMA UNTUK DOMContentLoaded
