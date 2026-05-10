@@ -10371,7 +10371,7 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                   if (cacheDoc.exists) {
                       const cacheData = cacheDoc.data();
                       // Semak tempoh sah cache (Contoh: 24 jam = 86400000 milisaat)
-                      const isFresh = (Date.now() - cacheData.timestamp) < (24 * 60 * 60 * 1000);
+                      const isFresh = (Date.now() - cacheData.timestamp) < (30 * 24 * 60 * 60 * 1000);
                       
                       if (isFresh && cacheData.results) {
                           console.log("Memuatkan hasil carian dari Firebase Cache");
