@@ -10357,12 +10357,35 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
   }
 
   async function performYoutubeSearch() {
-      const query = youtubeSearchInput.value.trim();
+      // Normalkan kata kunci carian (huruf kecil semua) supaya cache lebih efisien
+      const query = youtubeSearchInput.value.trim().toLowerCase(); 
       if (!query) return;
 
       simulateLoadingWithSteps(['Mencari di YouTube...', 'Memuatkan video...'], 'Mencari Video');
 
       try {
+          // 1. SEMAK CACHE DI FIREBASE TERLEBIH DAHULU
+          if (dbFirestore) {
+              try {
+                  const cacheDoc = await dbFirestore.collection("youtube_cache").doc(query).get();
+                  if (cacheDoc.exists) {
+                      const cacheData = cacheDoc.data();
+                      // Semak tempoh sah cache (Contoh: 24 jam = 86400000 milisaat)
+                      const isFresh = (Date.now() - cacheData.timestamp) < (24 * 60 * 60 * 1000);
+                      
+                      if (isFresh && cacheData.results) {
+                          console.log("Memuatkan hasil carian dari Firebase Cache");
+                          hideLoading();
+                          displayYoutubeResults(cacheData.results);
+                          return; // Berhenti di sini, tidak perlu panggil backend
+                      }
+                  }
+              } catch (cacheErr) {
+                  console.warn("Gagal menyemak cache Firebase:", cacheErr);
+              }
+          }
+
+          // 2. JIKA TIADA DALAM CACHE ATAU CACHE LUPUT, PANGGIL BACKEND
           const response = await fetchWithRetry(SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -10374,6 +10397,20 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
           if (result.success) {
               displayYoutubeResults(result.data);
+              
+              // 3. SIMPAN HASIL CARIAN KE DALAM FIREBASE CACHE
+              if (dbFirestore && result.data && result.data.length > 0) {
+                  try {
+                      await dbFirestore.collection("youtube_cache").doc(query).set({
+                          results: result.data,
+                          timestamp: Date.now(),
+                          query: query
+                      });
+                      console.log("Hasil carian YouTube berjaya disimpan ke Firebase Cache");
+                  } catch (saveErr) {
+                      console.warn("Gagal menyimpan cache ke Firebase:", saveErr);
+                  }
+              }
           } else {
               CustomAppModal.alert("Gagal cari video: " + result.message, "Ralat", "error");
           }
