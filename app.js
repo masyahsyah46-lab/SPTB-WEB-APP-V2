@@ -6255,6 +6255,9 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     
     let themeColor = getUserColorHex(currentUser.color);
     
+    // --- KOD TAMBAHAN: Terapkan warna pengguna ke seluruh sistem & cetakan ---
+    document.documentElement.style.setProperty('--theme-color', themeColor);
+    
     // Inisialkan aplikasi berdasarkan peranan
     if (!isAppReady) {
       initAppBasedOnRole();
