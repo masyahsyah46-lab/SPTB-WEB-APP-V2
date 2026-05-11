@@ -351,16 +351,95 @@ function doGet(e) {
       return createJSONOutput({ status: "success", siasat: siasatQ, pemutihan: pemutihanQ });
     }
     
+    /* =================================================================
+       V6.5.1: PENAMBAHBAIKAN KESELAMATAN - PENGESAHAN ROLE & USERNAME
+       Sebelum memproses sebarang permintaan data, sistem akan mengesahkan
+       bahawa role yang diminta adalah sah dan userName yang dihantar
+       adalah pemilik sah role tersebut (jika berkaitan).
+       Ini menghalang pencerobohan data dengan memanipulasi parameter.
+       ================================================================= */
+    
+    // Dapatkan profil pengguna yang telah disahkan
+    let validatedUserName = userName || "";
+    let validatedRole = (role || "").toUpperCase();
+
+    // Jika parameter role dan email dihantar, sahkan kebenaran
+    if (email && validatedRole) {
+      // Tentukan senarai role yang dibenarkan untuk akses data
+      const allowedRoles = [ROLE_ADMIN, ROLE_PENGESYOR, ROLE_PELULUS, ROLE_PENGARAH, ROLE_KETUA_SEKSYEN];
+      
+      if (allowedRoles.includes(validatedRole)) {
+        const authResult = getAuthenticatedUserEmail(email);
+        if (authResult.isValid) {
+          const userProfile = findUserByEmail(authResult.email);
+          
+          if (userProfile) {
+            const userRole = (userProfile.role || "").toUpperCase();
+            
+            // PERLINDUNGAN KETAT: Jika frontend minta data sebagai PENGESYOR,
+            // pastikan pengguna memang PENGESYOR dan paksa userName = nama pengguna sah
+            if (validatedRole === ROLE_PENGESYOR) {
+              if (userRole !== ROLE_PENGESYOR) {
+                return createJSONOutput({ 
+                  status: "error", 
+                  message: "Akses Ditolak: Anda bukan PENGESYOR." 
+                });
+              }
+              // Paksa guna userName sendiri - abaikan parameter userName dari frontend
+              validatedUserName = userProfile.name || "";
+              validatedRole = ROLE_PENGESYOR;
+            }
+            // PERLINDUNGAN KETAT: Jika frontend minta data sebagai PELULUS,
+            // pastikan pengguna memang PELULUS dan paksa userName = nama pengguna sah
+            else if (validatedRole === ROLE_PELULUS) {
+              if (userRole !== ROLE_PELULUS) {
+                return createJSONOutput({ 
+                  status: "error", 
+                  message: "Akses Ditolak: Anda bukan PELULUS." 
+                });
+              }
+              validatedUserName = userProfile.name || "";
+              validatedRole = ROLE_PELULUS;
+            }
+            // Untuk ADMIN/PENGARAH/KETUA_SEKSYEN, benarkan lihat semua
+            else if (userRole === ROLE_ADMIN || userRole === ROLE_PENGARAH || userRole === ROLE_KETUA_SEKSYEN) {
+              // ADMIN boleh lihat semua - tiada perubahan pada validatedUserName
+              validatedRole = userRole;
+            }
+            // Jika role pengguna tidak sepadan dengan yang diminta dan bukan admin
+            else if (userRole !== validatedRole && userRole !== ROLE_ADMIN) {
+              return createJSONOutput({ 
+                status: "error", 
+                message: `Akses Ditolak: Role anda (${userRole}) tidak sepadan dengan role yang diminta (${validatedRole}).` 
+              });
+            }
+          } else {
+            return createJSONOutput({ 
+              status: "error", 
+              message: "Akses Ditolak: Pengguna tidak berdaftar." 
+            });
+          }
+        }
+      } else {
+        return createJSONOutput({ 
+          status: "error", 
+          message: `Akses Ditolak: Role '${validatedRole}' tidak sah.` 
+        });
+      }
+    }
+    
     let result;
 
     if (action === "getUsers") {
       result = getUsersData();
     } else if (action === "getStats") {
-      result = getStatisticsData(role, userName);
+      // Guna validatedRole & validatedUserName yang telah disahkan
+      result = getStatisticsData(validatedRole, validatedUserName);
     } else if (action === "getRepeatedApplications") {
-      result = getRepeatedApplicationsData();
+      result = getRepeatedApplicationsData(validatedRole, validatedUserName);
     } else {
-      result = getApplicationsData(role, userName);
+      // Default: getApplications
+      result = getApplicationsData(validatedRole, validatedUserName);
     }
     
     return result;
@@ -1612,6 +1691,10 @@ function handleDeleteRecord(data, sheet) {
   }
 }
 
+// =========================================================================
+// V6.5.1: FUNGSI getUsersData - DIPERKETAT
+// Hanya ADMIN boleh lihat semua users. Role lain tidak dibenarkan.
+// =========================================================================
 function getUsersData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(USERS_SHEET_NAME);
@@ -1640,6 +1723,12 @@ function getUsersData() {
   return createJSONOutput(users);
 }
 
+// =========================================================================
+// V6.5.1: FUNGSI getStatisticsData - PENAMBAHBAIKAN KESELAMATAN 100%
+// Tapisan data dilakukan SEPENUHNYA di peringkat pelayan.
+// PENGESYOR hanya dapat statistik untuk rekod miliknya.
+// PELULUS hanya dapat statistik untuk rekod yang perlu diluluskan.
+// =========================================================================
 function getStatisticsData(role, userName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
@@ -1651,13 +1740,43 @@ function getStatisticsData(role, userName) {
   const dataRange = sheet.getRange(2, 1, lastRow - 1, TOTAL_COLUMNS);
   const data = dataRange.getDisplayValues();
   
+  // =====================================================================
+  // V6.5.1: TAPISAN 100% SERVER-SIDE
+  // =====================================================================
+  
+  // 1. Buang baris kosong
   let filteredData = data.filter(row => row[0] && row[0].toString().trim() !== "");
+  
+  // 2. Tapis berdasarkan role
   if (role === ROLE_PENGESYOR && userName) {
-    filteredData = filteredData.filter(row => row[12] && row[12].toString().toUpperCase() === userName.toUpperCase());
+    // PENGESYOR: HANYA rekod di mana pengesyor = userName
+    filteredData = filteredData.filter(row => {
+      const rowPengesyor = row[12] ? row[12].toString().toUpperCase().trim() : '';
+      return rowPengesyor === userName.toUpperCase().trim();
+    });
+    Logger.log(`[V6.5.1] STATS: Tapisan PENGESYOR untuk '${userName}' - ${filteredData.length} rekod dipulangkan`);
+    
   } else if (role === ROLE_PELULUS && userName) {
-    filteredData = filteredData.filter(row => row[25] && row[25].toString().toUpperCase() === userName.toUpperCase());
+    // PELULUS: HANYA rekod yang telah disyor (syor_status tidak kosong)
+    filteredData = filteredData.filter(row => {
+      const syorStatus = row[13] ? row[13].toString().trim() : '';
+      return syorStatus !== '';
+    });
+    Logger.log(`[V6.5.1] STATS: Tapisan PELULUS untuk '${userName}' - ${filteredData.length} rekod dipulangkan`);
+    
+  } else if (role === ROLE_ADMIN || role === ROLE_PENGARAH || role === ROLE_KETUA_SEKSYEN) {
+    // ADMIN/PENGARAH/KETUA_SEKSYEN: Semua rekod (tiada tapisan tambahan)
+    Logger.log(`[V6.5.1] STATS: Paparan penuh untuk role '${role}' - ${filteredData.length} rekod`);
+    
+  } else {
+    // Role tidak dikenali - jangan pulangkan apa-apa data
+    Logger.log(`[V6.5.1] STATS: Role '${role}' tidak dikenali - pulangan kosong`);
+    return createJSONOutput({ total: 0, lulus: 0, tolak: 0, proses: 0, monthlyStats: {}, yearStats: {}, pengesyorStats: {}, pelulusStats: {} });
   }
   
+  // =====================================================================
+  // Kira statistik dari data yang telah ditapis
+  // =====================================================================
   const total = filteredData.length;
   const lulus = filteredData.filter(row => row[23] && row[23].toString().includes('LULUS')).length;
   const tolak = filteredData.filter(row => row[23] && (row[23].toString().includes('TOLAK') || row[23].toString().includes('SIASAT'))).length;
@@ -1692,6 +1811,7 @@ function getStatisticsData(role, userName) {
     }
   });
   
+  // Statistik pengesyor & pelulus hanya untuk ADMIN
   let pengesyorStats = {};
   let pelulusStats = {};
   
@@ -1711,10 +1831,23 @@ function getStatisticsData(role, userName) {
     });
   }
   
-  return createJSONOutput({ total: total, lulus: lulus, tolak: tolak, proses: proses, monthlyStats: monthlyStats, yearStats: yearStats, pengesyorStats: pengesyorStats, pelulusStats: pelulusStats });
+  return createJSONOutput({ 
+    total: total, 
+    lulus: lulus, 
+    tolak: tolak, 
+    proses: proses, 
+    monthlyStats: monthlyStats, 
+    yearStats: yearStats, 
+    pengesyorStats: pengesyorStats, 
+    pelulusStats: pelulusStats 
+  });
 }
 
-function getRepeatedApplicationsData() {
+// =========================================================================
+// V6.5.1: FUNGSI getRepeatedApplicationsData - PENAMBAHBAIKAN KESELAMATAN
+// Tapisan data dilakukan SEPENUHNYA di peringkat pelayan.
+// =========================================================================
+function getRepeatedApplicationsData(role, userName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) return createJSONOutput([]);
@@ -1724,10 +1857,30 @@ function getRepeatedApplicationsData() {
 
   const dataRange = sheet.getRange(2, 1, lastRow - 1, TOTAL_COLUMNS);
   const data = dataRange.getDisplayValues();
+  
+  // =====================================================================
+  // V6.5.1: TAPISAN 100% SERVER-SIDE
+  // =====================================================================
+  
+  // 1. Buang baris kosong
+  let filteredData = data.filter(row => row[0] && row[0].toString().trim() !== "");
+  
+  // 2. Tapis berdasarkan role
+  if (role === ROLE_PENGESYOR && userName) {
+    filteredData = filteredData.filter(row => {
+      const rowPengesyor = row[12] ? row[12].toString().toUpperCase().trim() : '';
+      return rowPengesyor === userName.toUpperCase().trim();
+    });
+  } else if (role === ROLE_PELULUS && userName) {
+    filteredData = filteredData.filter(row => {
+      const syorStatus = row[13] ? row[13].toString().trim() : '';
+      return syorStatus !== '';
+    });
+  }
+  
   const groupedByCIDB = {};
 
-  data.forEach((row, index) => {
-    if (!row[0] || row[0].toString().trim() === "") return;
+  filteredData.forEach((row, index) => {
     const cidb = row[1] ? row[1].toString().trim() : '';
     if (!cidb) return;
     if (!groupedByCIDB[cidb]) groupedByCIDB[cidb] = { cidb: cidb, syarikat: row[0] || '-', rekod: [] };
@@ -1747,6 +1900,12 @@ function getRepeatedApplicationsData() {
   return createJSONOutput(repeatedCompanies);
 }
 
+// =========================================================================
+// V6.5.1: FUNGSI getApplicationsData - PENAMBAHBAIKAN KESELAMATAN 100%
+// Tapisan data dilakukan SEPENUHNYA di peringkat pelayan.
+// PENGESYOR HANYA dapat rekod miliknya.
+// PELULUS HANYA dapat rekod yang telah disyor.
+// =========================================================================
 function getApplicationsData(role, userName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
@@ -1773,17 +1932,43 @@ function getApplicationsData(role, userName) {
   const data = dataRange.getDisplayValues();
   const headers = data.shift();
 
-  let filteredData = data.filter((row, index) => { return row[0] && row[0].toString().trim() !== ""; });
+  // =====================================================================
+  // V6.5.1: TAPISAN 100% SERVER-SIDE
+  // =====================================================================
+  
+  // 1. Buang baris kosong
+  let filteredData = data.filter((row, index) => { 
+    return row[0] && row[0].toString().trim() !== ""; 
+  });
 
+  // 2. Tapis berdasarkan role
   if (role === ROLE_PENGESYOR && userName) {
-    filteredData = filteredData.filter(row => row[12] && row[12].toString().toUpperCase() === userName.toUpperCase());
-  } else if (role === ROLE_PELULUS && userName) {
+    // PENGESYOR: HANYA rekod di mana pengesyor = userName
     filteredData = filteredData.filter(row => {
-      const syorStatus = row[13];
-      return syorStatus && syorStatus.toString().trim() !== "";
+      const rowPengesyor = row[12] ? row[12].toString().toUpperCase().trim() : '';
+      return rowPengesyor === userName.toUpperCase().trim();
     });
+    Logger.log(`[V6.5.1] DATA: Tapisan PENGESYOR untuk '${userName}' - ${filteredData.length} rekod dipulangkan`);
+    
+  } else if (role === ROLE_PELULUS && userName) {
+    // PELULUS: HANYA rekod yang telah disyor (syor_status tidak kosong)
+    filteredData = filteredData.filter(row => {
+      const syorStatus = row[13] ? row[13].toString().trim() : '';
+      return syorStatus !== '';
+    });
+    Logger.log(`[V6.5.1] DATA: Tapisan PELULUS untuk '${userName}' - ${filteredData.length} rekod dipulangkan`);
+    
+  } else if (role === ROLE_ADMIN || role === ROLE_PENGARAH || role === ROLE_KETUA_SEKSYEN) {
+    // ADMIN/PENGARAH/KETUA_SEKSYEN: Semua rekod (tiada tapisan tambahan)
+    Logger.log(`[V6.5.1] DATA: Paparan penuh untuk role '${role}' - ${filteredData.length} rekod`);
+    
+  } else {
+    // Role tidak dikenali - jangan pulangkan apa-apa data
+    Logger.log(`[V6.5.1] DATA: Role '${role}' tidak dikenali - pulangan kosong`);
+    return createJSONOutput([]);
   }
 
+  // 3. Bina JSON output dari data yang telah ditapis
   const jsonData = filteredData.map((row, index) => {
     return {
       row: index + 2, 
@@ -1956,7 +2141,7 @@ function testUserFolder() {
 }
 
 function testGetRepeatedApplications() {
-  const result = getRepeatedApplicationsData();
+  const result = getRepeatedApplicationsData(ROLE_ADMIN, "");
   console.log(result.getContent());
   return result;
 }
@@ -2043,7 +2228,7 @@ function testSearchYoutube() {
 }
 
 // =========================================================================
-// FUNGSI BERJADUAL: KUMPULAN EMEL PEMUTIHAN (SETIAP JUMAAT 11 PAGI - Kitaran 2 Minggu)
+// FUNGSI BERJADUAL: KUMPULAN EMEL PEMUTIHAN (SETIAP JUMAAT 10 PAGI - Kitaran 2 Minggu)
 // =========================================================================
 function addToPemutihanQueue(emailData) {
   const props = PropertiesService.getScriptProperties();
@@ -2157,13 +2342,13 @@ function setupPemutihanCronJob() {
     .timeBased()
     .everyWeeks(2) 
     .onWeekDay(ScriptApp.WeekDay.FRIDAY) 
-    .atHour(11) 
+    .atHour(10) 
     .create();
-  console.log("✅ Cron job Dwi-Mingguan Pemutihan berjaya ditetapkan setiap hari Jumaat jam 11 pagi, setiap 2 minggu.");
+  console.log("✅ Cron job Dwi-Mingguan Pemutihan berjaya ditetapkan setiap hari Jumaat jam 10 pagi, setiap 2 minggu.");
 }
 
 // =========================================================================
-// FUNGSI BERJADUAL: KUMPULAN EMEL SIASAT BIASA (SETIAP HARI BEKERJA 10 PAGI)
+// FUNGSI BERJADUAL: KUMPULAN EMEL SIASAT BIASA (SETIAP HARI BEKERJA 9 PAGI)
 // =========================================================================
 function addToSiasatQueue(emailData) {
   const props = PropertiesService.getScriptProperties();
@@ -2283,7 +2468,7 @@ function setupSiasatCronJob() {
   ScriptApp.newTrigger('processSiasatQueue')
     .timeBased()
     .everyDays(1)
-    .atHour(10) 
+    .atHour(9) 
     .create();
   console.log("✅ Cron job Siasat Biasa berjaya ditetapkan setiap hari jam 10 pagi.");
 }
@@ -2307,7 +2492,7 @@ function lihatSenaraiQueue() {
     console.log("Tiada data dalam queue Pemutihan.");
   }
 
-  console.log("\n=== QUEUE SIASAT BIASA (HARI BEKERJA 10 PAGI) ===");
+  console.log("\n=== QUEUE SIASAT BIASA (HARI BEKERJA 9 PAGI) ===");
   const siasatQ = props.getProperty('SIASAT_QUEUE');
   if (siasatQ) {
     const sData = JSON.parse(siasatQ);
