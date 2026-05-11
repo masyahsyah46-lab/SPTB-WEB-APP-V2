@@ -10455,11 +10455,10 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
               const pc = document.getElementById('youtubePlayerContainer');
               const mp = document.getElementById('youtubeMainPlayer');
               pc.style.display = 'block';
-              mp.src = `https://www.youtube.com/embed/${item.id.videoId}?autoplay=1`;
+              // Tambah &list=RD[VIDEO_ID] untuk jadikan ia YouTube Mix (Auto-play lagu seterusnya)
+              mp.src = `https://www.youtube.com/embed/${item.id.videoId}?autoplay=1&list=RD${item.id.videoId}`;
               window.scrollTo({ top: pc.offsetTop - 50, behavior: 'smooth' });
           };
-          container.appendChild(card);
-      });
   }
   // =========================================================================
   // FUNGSI PAPAR VIDEO DARI CACHE SEBELUM CARIAN
