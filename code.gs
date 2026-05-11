@@ -2043,7 +2043,7 @@ function testSearchYoutube() {
 }
 
 // =========================================================================
-// FUNGSI BERJADUAL: KUMPULAN EMEL PEMUTIHAN (SETIAP JUMAAT 11 PAGI - Kitaran 2 Minggu)
+// FUNGSI BERJADUAL: KUMPULAN EMEL PEMUTIHAN (SETIAP JUMAAT 10 PAGI - Kitaran 2 Minggu)
 // =========================================================================
 function addToPemutihanQueue(emailData) {
   const props = PropertiesService.getScriptProperties();
@@ -2157,13 +2157,13 @@ function setupPemutihanCronJob() {
     .timeBased()
     .everyWeeks(2) 
     .onWeekDay(ScriptApp.WeekDay.FRIDAY) 
-    .atHour(11) 
+    .atHour(10) 
     .create();
-  console.log("✅ Cron job Dwi-Mingguan Pemutihan berjaya ditetapkan setiap hari Jumaat jam 11 pagi, setiap 2 minggu.");
+  console.log("✅ Cron job Dwi-Mingguan Pemutihan berjaya ditetapkan setiap hari Jumaat jam 10 pagi, setiap 2 minggu.");
 }
 
 // =========================================================================
-// FUNGSI BERJADUAL: KUMPULAN EMEL SIASAT BIASA (SETIAP HARI BEKERJA 10 PAGI)
+// FUNGSI BERJADUAL: KUMPULAN EMEL SIASAT BIASA (SETIAP HARI BEKERJA 9 PAGI)
 // =========================================================================
 function addToSiasatQueue(emailData) {
   const props = PropertiesService.getScriptProperties();
@@ -2283,9 +2283,9 @@ function setupSiasatCronJob() {
   ScriptApp.newTrigger('processSiasatQueue')
     .timeBased()
     .everyDays(1)
-    .atHour(10) 
+    .atHour(9) 
     .create();
-  console.log("✅ Cron job Siasat Biasa berjaya ditetapkan setiap hari jam 10 pagi.");
+  console.log("✅ Cron job Siasat Biasa berjaya ditetapkan setiap hari jam 9 pagi.");
 }
 
 // =========================================================================
@@ -2295,7 +2295,7 @@ function setupSiasatCronJob() {
 function lihatSenaraiQueue() {
   const props = PropertiesService.getScriptProperties();
 
-  console.log("=== QUEUE PEMUTIHAN (JUMAAT 11 PAGI SETIAP 2 MINGGU) ===");
+  console.log("=== QUEUE PEMUTIHAN (JUMAAT 10 PAGI SETIAP 2 MINGGU) ===");
   const pemutihanQ = props.getProperty('PEMUTIHAN_QUEUE');
   if (pemutihanQ) {
     const pData = JSON.parse(pemutihanQ);
@@ -2307,7 +2307,7 @@ function lihatSenaraiQueue() {
     console.log("Tiada data dalam queue Pemutihan.");
   }
 
-  console.log("\n=== QUEUE SIASAT BIASA (HARI BEKERJA 10 PAGI) ===");
+  console.log("\n=== QUEUE SIASAT BIASA (HARI BEKERJA 9 PAGI) ===");
   const siasatQ = props.getProperty('SIASAT_QUEUE');
   if (siasatQ) {
     const sData = JSON.parse(siasatQ);
