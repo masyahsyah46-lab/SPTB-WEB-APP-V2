@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let bakulUnsubscribe = null;
 
   // URL APPSCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvNw5GgjWUXuTRp3Yv7BzkjNH0b8oAujq06bzdGX0CyxmV9sj-zAxdrBEr7yL--1eE/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybztmMhMUJLWnuzBTwbFpTckquoz_55b7fdBLlmeHCSdy4-9LgITy8l5kxGOxTvknj/exec';
   
   // Google Client ID
   const GOOGLE_CLIENT_ID = '758579492428-rnfev1nkkf2e6qduhujgtfbhudl2j9td.apps.googleusercontent.com';
@@ -4960,6 +4960,21 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         background: white;
       }
       
+      /* GAYA BARU: Penandaan Syor untuk PDF */
+      .syor-selected {
+        border: 2px solid black !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        font-weight: 900 !important;
+        background-color: #f3f4f6 !important;
+        display: inline-block !important;
+      }
+      .syor-dimmed {
+        text-decoration: line-through !important;
+        color: #888 !important;
+        opacity: 0.5;
+      }
+      
       .print-header-strip {
         height: 6px;
         background-color: ${themeColor};
@@ -5146,199 +5161,237 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       const dbPautanValue = document.getElementById('db_pautan')?.value || '';
       const isDriveAlreadyCreated = driveFolderCreated === true || (dbPautanValue && dbPautanValue.trim() !== '');
       
+      let proceedToDrive = false;
+
+      // KOD BARU: Logik Pilihan Cetak (Kemaskini Drive vs Cetak Biasa)
       if (isDriveAlreadyCreated) {
-        window.print();
-        hasPrinted = true;
-        storageWrapper.set({ 'stb_has_printed': true });
-        if (btnSyncToDb) {
-          btnSyncToDb.style.display = 'inline-block';
-        }
-        await CustomAppModal.alert("Cetakan biasa. Folder Drive telah pun dicipta sebelum ini.", "Info Cetakan", "info");
-        return;
-      }
-      
-      const userConfirmed = await CustomAppModal.confirm(
-          "Adakah anda pasti ingin mencetak dan menyimpan borang ini ke Google Drive?",
-          "Cetak & Simpan",
-          "info",
-          "Ya, Teruskan",
-          false
-      );
-      
-      if (!userConfirmed) {
-        window.print();
-        hasPrinted = true;
-        storageWrapper.set({ 'stb_has_printed': true });
-        if (btnSyncToDb) {
-          btnSyncToDb.style.display = 'inline-block';
-        }
-        await CustomAppModal.alert("Borang telah dicetak. Butang 'Simpan & Ke Input Database' kini tersedia.", "Info", "success");
-        return;
-      }
-      
-      const companyName = document.getElementById('borang_syarikat')?.value.trim();
-      if (!companyName) {
-        await CustomAppModal.alert("Sila isi Nama Syarikat terlebih dahulu sebelum mencetak dan menyimpan ke Drive.", "Maklumat Tidak Lengkap", "warning");
-        return;
-      }
-      
-      const applicationTypeRadio = document.querySelector('input[name="jenisApp"]:checked');
-      let applicationType = '';
-      if (applicationTypeRadio) {
-        if (applicationTypeRadio.value === 'baru') applicationType = 'BARU';
-        else if (applicationTypeRadio.value === 'pembaharuan') applicationType = 'PEMBAHARUAN';
-        else if (applicationTypeRadio.value === 'ubah_maklumat') applicationType = 'UBAH MAKLUMAT';
-        else if (applicationTypeRadio.value === 'ubah_gred') applicationType = 'UBAH GRED';
-      }
-      
-      if (!applicationType) {
-        await CustomAppModal.alert("Sila pilih Jenis Permohonan terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
-        return;
-      }
-      
-      const tarikhMohon = document.getElementById('borang_tarikh_mohon')?.value;
-      if (!tarikhMohon) {
-        await CustomAppModal.alert("Sila isi Tarikh Mohon terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
-        return;
-      }
-      
-      const userName = currentUser.name;
-      const now = new Date();
-      const currentMonth = now.toLocaleString('ms-MY', { month: 'long' });
-      const currentYear = now.getFullYear();
-      const monthYearFolder = `${currentMonth.toUpperCase()} ${currentYear}`;
-      
-      let formattedDate = '';
-      try {
-        const tarikhDate = new Date(tarikhMohon);
-        formattedDate = tarikhDate.toLocaleDateString('ms-MY', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
-      } catch (e) {
-        formattedDate = tarikhMohon;
-      }
-      
-      const ubahMaklumatVal = document.getElementById('input_ubah_maklumat')?.value || '';
-      const ubahGredVal = document.getElementById('input_ubah_gred')?.value || '';
-      let specificType = '';
-      if (applicationType === 'UBAH MAKLUMAT' && ubahMaklumatVal) specificType = ` (${ubahMaklumatVal})`;
-      if (applicationType === 'UBAH GRED' && ubahGredVal) specificType = ` (${ubahGredVal})`;
-      
-      const subfolderName = `${applicationType}${specificType} - ${formattedDate}`;
-      
-      const printLayoutElement = document.getElementById('printLayout');
-      if (!printLayoutElement) {
-        await CustomAppModal.alert("Ralat: Elemen cetakan tidak ditemui.", "Ralat Sistem", "error");
-        return;
-      }
-      
-      const userColorHex = getUserColorHex(currentUser.color);
-      const pdfCss = generatePdfCssString(userColorHex);
-      const printHTML = `<style>${pdfCss}</style>${printLayoutElement.outerHTML}`;
-      
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'flex';
-        loadingText.textContent = 'Menyimpan ke Drive';
-        if (loadingSubtext) loadingSubtext.textContent = 'Sila tunggu sebentar';
+        const updateDrive = await CustomAppModal.confirm(
+            "Rekod ini telah mempunyai pautan Drive. Adakah anda ingin KEMASKINI (simpan semula) fail PDF ini ke dalam Drive, atau sekadar cetakan biasa pada pencetak?",
+            "Kemaskini PDF di Drive",
+            "info",
+            "Ya, Kemaskini Drive" // Teks Butang Biru
+        );
         
-        const progressBar = document.getElementById('loading-progress-bar');
-        const progressPercent = document.getElementById('loading-progress-percent');
-        const progressLabel = document.getElementById('loading-progress-label');
-        
-        if (progressBar) { progressBar.style.display = 'block'; progressBar.style.width = '0%'; }
-        if (progressPercent) progressPercent.textContent = '0%';
-        if (progressLabel) progressLabel.textContent = 'Menyediakan dokumen PDF...';
-        
-        const progressSteps = document.getElementById('loading-progress-steps');
-        if (progressSteps) progressSteps.style.display = 'flex';
-        
-        let currentProgress = 0;
-        if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        
-        loadingProgressInterval = setInterval(() => {
-          if (currentProgress < 90) {
-            currentProgress += Math.floor(Math.random() * 5) + 1;
-            if (currentProgress > 90) currentProgress = 90;
-            if (progressBar) progressBar.style.width = `${currentProgress}%`;
-            if (progressPercent) progressPercent.textContent = `${currentProgress}%`;
-            if (progressLabel) progressLabel.textContent = currentProgress < 30 ? 'Menyediakan dokumen PDF...' : currentProgress < 60 ? 'Mencipta folder di Google Drive...' : 'Menyimpan fail...';
-          }
-        }, 200);
-      }
-      
-      if (printLayoutElement) printLayoutElement.style.display = 'none';
-      
-      const payload = {
-        action: 'cetak_dan_simpan_pdf',
-        company_name: companyName,
-        application_type: subfolderName,
-        month_year: monthYearFolder,
-        user_name: userName,
-        user_color: userColorHex,
-        main_folder_id: mainFolderId,
-        htmlContent: printHTML,
-        email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
-      };
-      
-      try {
-        const response = await fetchWithRetry(SCRIPT_URL, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload)
-        }, 3, 1000);
-        
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const result = await response.json();
-        
-        if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        const progressBar = document.getElementById('loading-progress-bar');
-        const progressPercent = document.getElementById('loading-progress-percent');
-        const progressLabel = document.getElementById('loading-progress-label');
-        
-        if (progressBar) progressBar.style.width = '100%';
-        if (progressPercent) progressPercent.textContent = '100%';
-        if (progressLabel) progressLabel.textContent = 'Selesai!';
-        
-        if (result.success) {
-          await playSuccessSound();
-          const folderUrl = result.folder_url;
-          const dbPautanField = document.getElementById('db_pautan');
-          if (dbPautanField) dbPautanField.value = folderUrl;
-          
-          driveFolderCreated = true;
-          createdFolderUrl = folderUrl;
-          userFolderUrl = result.user_folder_url || '';
-          
-          if (cbCreateDriveFolder) cbCreateDriveFolder.checked = false;
-          
-          await storageWrapper.set({ 'stb_drive_folder_url': folderUrl, 'stb_user_folder_url': userFolderUrl });
-          updateOpenDriveButton();
-          
-          setTimeout(async () => {
-            if (loadingOverlay) loadingOverlay.style.display = 'none';
-            if (printLayoutElement) printLayoutElement.style.display = '';
-            
+        // Jika pengguna pilih "Batal" (Mahu cetak biasa sahaja)
+        if (!updateDrive) {
             window.print();
             hasPrinted = true;
             storageWrapper.set({ 'stb_has_printed': true });
-            if (btnSyncToDb) btnSyncToDb.style.display = 'inline-block';
-            if (driveResult && folderUrl) showDriveFolderLink(folderUrl, userFolderUrl);
-            
-            await CustomAppModal.alert("Borang telah dicetak dan fail PDF berjaya disimpan di Drive!<br><br>Pautan folder telah dimasukkan secara automatik ke Input Database.", "Berjaya Disimpan", "success");
-          }, 500);
-          
-        } else {
-          throw new Error(result.message || 'Gagal menyimpan ke Drive');
+            if (btnSyncToDb) {
+              btnSyncToDb.style.display = 'inline-block';
+            }
+            return; // Berhenti di sini, tak perlu panggil API Drive
         }
-      } catch (error) {
-        console.error("V6.5.2 Print & Drive save error:", error);
-        await playErrorSound();
-        if (loadingProgressInterval) clearInterval(loadingProgressInterval);
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
-        if (printLayoutElement) printLayoutElement.style.display = '';
         
-        await CustomAppModal.alert(`Gagal menyimpan ke Drive: ${error.message}<br><br>Cetakan akan diteruskan tanpa simpanan Drive.`, "Ralat Drive", "error");
+        // Jika pengguna tekan "Ya, Kemaskini Drive"
+        proceedToDrive = true;
+
+      } else {
+        // Logik asal untuk rekod baru
+        const userConfirmed = await CustomAppModal.confirm(
+            "Adakah anda pasti ingin mencetak dan menyimpan borang ini ke Google Drive?",
+            "Cetak & Simpan",
+            "info",
+            "Ya, Teruskan",
+            false
+        );
         
-        window.print();
-        hasPrinted = true;
-        storageWrapper.set({ 'stb_has_printed': true });
-        if (btnSyncToDb) btnSyncToDb.style.display = 'inline-block';
+        if (!userConfirmed) {
+          window.print();
+          hasPrinted = true;
+          storageWrapper.set({ 'stb_has_printed': true });
+          if (btnSyncToDb) {
+            btnSyncToDb.style.display = 'inline-block';
+          }
+          await CustomAppModal.alert("Borang telah dicetak. Butang 'Simpan & Ke Input Database' kini tersedia.", "Info", "success");
+          return;
+        }
+        proceedToDrive = true;
+      }
+      
+      // Jika proceedToDrive adalah BENAR (True), teruskan penjanaan fail PDF ke Server
+      if (proceedToDrive) {
+        const companyName = document.getElementById('borang_syarikat')?.value.trim();
+        if (!companyName) {
+          await CustomAppModal.alert("Sila isi Nama Syarikat terlebih dahulu sebelum mencetak dan menyimpan ke Drive.", "Maklumat Tidak Lengkap", "warning");
+          return;
+        }
+        
+        const applicationTypeRadio = document.querySelector('input[name="jenisApp"]:checked');
+        let applicationType = '';
+        if (applicationTypeRadio) {
+          if (applicationTypeRadio.value === 'baru') applicationType = 'BARU';
+          else if (applicationTypeRadio.value === 'pembaharuan') applicationType = 'PEMBAHARUAN';
+          else if (applicationTypeRadio.value === 'ubah_maklumat') applicationType = 'UBAH MAKLUMAT';
+          else if (applicationTypeRadio.value === 'ubah_gred') applicationType = 'UBAH GRED';
+        }
+        
+        if (!applicationType) {
+          await CustomAppModal.alert("Sila pilih Jenis Permohonan terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
+          return;
+        }
+        
+        const tarikhMohon = document.getElementById('borang_tarikh_mohon')?.value;
+        if (!tarikhMohon) {
+          await CustomAppModal.alert("Sila isi Tarikh Mohon terlebih dahulu.", "Maklumat Tidak Lengkap", "warning");
+          return;
+        }
+        
+        const userName = currentUser.name;
+        const now = new Date();
+        const currentMonth = now.toLocaleString('ms-MY', { month: 'long' });
+        const currentYear = now.getFullYear();
+        const monthYearFolder = `${currentMonth.toUpperCase()} ${currentYear}`;
+        
+        let formattedDate = '';
+        try {
+          const tarikhDate = new Date(tarikhMohon);
+          formattedDate = tarikhDate.toLocaleDateString('ms-MY', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+        } catch (e) {
+          formattedDate = tarikhMohon;
+        }
+        
+        const ubahMaklumatVal = document.getElementById('input_ubah_maklumat')?.value || '';
+        const ubahGredVal = document.getElementById('input_ubah_gred')?.value || '';
+        let specificType = '';
+        if (applicationType === 'UBAH MAKLUMAT' && ubahMaklumatVal) specificType = ` (${ubahMaklumatVal})`;
+        if (applicationType === 'UBAH GRED' && ubahGredVal) specificType = ` (${ubahGredVal})`;
+        
+        const subfolderName = `${applicationType}${specificType} - ${formattedDate}`;
+        
+        const printLayoutElement = document.getElementById('printLayout');
+        if (!printLayoutElement) {
+          await CustomAppModal.alert("Ralat: Elemen cetakan tidak ditemui.", "Ralat Sistem", "error");
+          return;
+        }
+        
+        const userColorHex = getUserColorHex(currentUser.color);
+        const pdfCss = generatePdfCssString(userColorHex);
+        const printHTML = `<style>${pdfCss}</style>${printLayoutElement.outerHTML}`;
+        
+        if (loadingOverlay) {
+          loadingOverlay.style.display = 'flex';
+          loadingText.textContent = 'Menyimpan ke Drive';
+          if (loadingSubtext) loadingSubtext.textContent = 'Sila tunggu sebentar';
+          
+          const progressBar = document.getElementById('loading-progress-bar');
+          const progressPercent = document.getElementById('loading-progress-percent');
+          const progressLabel = document.getElementById('loading-progress-label');
+          
+          if (progressBar) { progressBar.style.display = 'block'; progressBar.style.width = '0%'; }
+          if (progressPercent) progressPercent.textContent = '0%';
+          if (progressLabel) progressLabel.textContent = 'Menyediakan dokumen PDF...';
+          
+          const progressSteps = document.getElementById('loading-progress-steps');
+          if (progressSteps) progressSteps.style.display = 'flex';
+          
+          let currentProgress = 0;
+          if (loadingProgressInterval) clearInterval(loadingProgressInterval);
+          
+          loadingProgressInterval = setInterval(() => {
+            if (currentProgress < 90) {
+              currentProgress += Math.floor(Math.random() * 5) + 1;
+              if (currentProgress > 90) currentProgress = 90;
+              if (progressBar) progressBar.style.width = `${currentProgress}%`;
+              if (progressPercent) progressPercent.textContent = `${currentProgress}%`;
+              if (progressLabel) progressLabel.textContent = currentProgress < 30 ? 'Menyediakan dokumen PDF...' : currentProgress < 60 ? 'Mencipta folder di Google Drive...' : 'Menyimpan fail...';
+            }
+          }, 200);
+        }
+        
+        if (printLayoutElement) printLayoutElement.style.display = 'none';
+        
+        // Format Nama File (Title Case)
+        const syorChoice = document.getElementById('borang_syor_status')?.value;
+        let customFileName = `Borang Semakan ${companyName}`; 
+        
+        if (syorChoice === 'SOKONG') {
+            const tProses = document.getElementById('borang_tarikh_proses')?.value || '';
+            customFileName = `Borang Semakan Sokong-${tProses}`;
+        } else if (syorChoice === 'TIDAK DISOKONG') {
+            const tProses = document.getElementById('borang_tarikh_proses')?.value || '';
+            customFileName = `Borang Semakan Tidak Disokong-${tProses}`;
+        } else if (syorChoice === 'SIASAT') {
+            const tLengkap = document.getElementById('borang_tarikh_lengkap')?.value || '';
+            customFileName = `Borang Semakan Siasat-${tLengkap}`;
+        }
+
+        const payload = {
+          action: 'cetak_dan_simpan_pdf',
+          company_name: companyName,
+          custom_file_name: customFileName,
+          application_type: subfolderName,
+          month_year: monthYearFolder,
+          user_name: userName,
+          user_color: userColorHex,
+          main_folder_id: mainFolderId,
+          htmlContent: printHTML,
+          email: currentUser ? currentUser.email : ''
+        };
+        
+        try {
+          const response = await fetchWithRetry(SCRIPT_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload)
+          }, 3, 1000);
+          
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const result = await response.json();
+          
+          if (loadingProgressInterval) clearInterval(loadingProgressInterval);
+          const progressBar = document.getElementById('loading-progress-bar');
+          const progressPercent = document.getElementById('loading-progress-percent');
+          const progressLabel = document.getElementById('loading-progress-label');
+          
+          if (progressBar) progressBar.style.width = '100%';
+          if (progressPercent) progressPercent.textContent = '100%';
+          if (progressLabel) progressLabel.textContent = 'Selesai!';
+          
+          if (result.success) {
+            await playSuccessSound();
+            const folderUrl = result.folder_url;
+            const dbPautanField = document.getElementById('db_pautan');
+            if (dbPautanField) dbPautanField.value = folderUrl;
+            
+            driveFolderCreated = true;
+            createdFolderUrl = folderUrl;
+            userFolderUrl = result.user_folder_url || '';
+            
+            if (cbCreateDriveFolder) cbCreateDriveFolder.checked = false;
+            
+            await storageWrapper.set({ 'stb_drive_folder_url': folderUrl, 'stb_user_folder_url': userFolderUrl });
+            updateOpenDriveButton();
+            
+            setTimeout(async () => {
+              if (loadingOverlay) loadingOverlay.style.display = 'none';
+              if (printLayoutElement) printLayoutElement.style.display = '';
+              
+              window.print();
+              hasPrinted = true;
+              storageWrapper.set({ 'stb_has_printed': true });
+              if (btnSyncToDb) btnSyncToDb.style.display = 'inline-block';
+              if (driveResult && folderUrl) showDriveFolderLink(folderUrl, userFolderUrl);
+              
+              // Mesej berjaya dikemaskini
+              await CustomAppModal.alert("Borang telah dicetak dan fail PDF berjaya dikemaskini di Drive!<br><br>Pautan folder telah dimasukkan secara automatik ke Input Database.", "Berjaya Disimpan", "success");
+            }, 500);
+            
+          } else {
+            throw new Error(result.message || 'Gagal menyimpan ke Drive');
+          }
+        } catch (error) {
+          console.error("V6.5.2 Print & Drive save error:", error);
+          await playErrorSound();
+          if (loadingProgressInterval) clearInterval(loadingProgressInterval);
+          if (loadingOverlay) loadingOverlay.style.display = 'none';
+          if (printLayoutElement) printLayoutElement.style.display = '';
+          
+          await CustomAppModal.alert(`Gagal menyimpan ke Drive: ${error.message}<br><br>Cetakan akan diteruskan tanpa simpanan Drive.`, "Ralat Drive", "error");
+          
+          window.print();
+          hasPrinted = true;
+          storageWrapper.set({ 'stb_has_printed': true });
+          if (btnSyncToDb) btnSyncToDb.style.display = 'inline-block';
+        }
       }
     });
   }
@@ -5349,14 +5402,21 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       return el ? el.value.toUpperCase() : ''; 
     };
 
+    // Kemaskini Checkbox untuk PDF
     const selectedType = document.querySelector('input[name="jenisApp"]:checked')?.value;
     ['baru', 'pembaharuan', 'ubah_maklumat', 'ubah_gred'].forEach(type => {
       const cb = document.getElementById(`print_type_${type}`);
-      if(cb) cb.checked = false;
+      if(cb) {
+          cb.checked = false;
+          cb.removeAttribute('checked');
+      }
     });
     if(selectedType) {
       const targetCb = document.getElementById(`print_type_${selectedType}`);
-      if(targetCb) targetCb.checked = true;
+      if(targetCb) {
+          targetCb.checked = true;
+          targetCb.setAttribute('checked', 'checked'); // PENTING: Untuk Drive
+      }
     }
 
     const setTxt = (id, val) => { 
@@ -5397,9 +5457,33 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
     setTxt('print_kwsp_1', kwsp1);
     setTxt('print_kwsp_2', kwsp2);
     setTxt('print_kwsp_3', kwsp3);
-
+    
     const tMohon = document.getElementById('borang_tarikh_mohon')?.value || '';
     setTxt('print_tarikh_mohon', tMohon ? formatDateDisplay(tMohon) : '_____________');
+    // KOD BARU: Set Tarikh Tambahan
+    setTxt('print_tarikh_lengkap', val('borang_tarikh_lengkap') ? formatDateDisplay(val('borang_tarikh_lengkap')) : '_____________');
+    setTxt('print_tarikh_siasatan', val('borang_tarikh_siasatan') ? formatDateDisplay(val('borang_tarikh_siasatan')) : '_____________');
+    setTxt('print_tarikh_proses', val('borang_tarikh_proses') ? formatDateDisplay(val('borang_tarikh_proses')) : '_____________');
+
+    // Kemaskini Highlight Syor untuk PDF
+    const syorPilihan = val('borang_syor_status');
+    const elSokong = document.getElementById('print_syor_sokong');
+    const elSiasat = document.getElementById('print_syor_siasat');
+    const elTidak = document.getElementById('print_syor_tidak_sokong');
+
+    [elSokong, elSiasat, elTidak].forEach(el => {
+        if(el) { 
+            el.setAttribute('class', 'syor-dimmed'); // Gunakan setAttribute
+        }
+    });
+
+    if(syorPilihan === 'SOKONG' && elSokong) {
+        elSokong.setAttribute('class', 'syor-selected');
+    } else if(syorPilihan === 'SIASAT' && elSiasat) {
+        elSiasat.setAttribute('class', 'syor-selected');
+    } else if(syorPilihan === 'TIDAK DISOKONG' && elTidak) {
+        elTidak.setAttribute('class', 'syor-selected');
+    }
 
     const tbody = document.getElementById('print_personnel_page1');
     if (!tbody) return;
@@ -8282,9 +8366,79 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
 
     updateValidationCheckboxDisplay();
 
-    switchTab('db');
+    // =====================================================================
+    // (KOD BARU KEMASKINI) LANGKAH B: RESTORE LENGKAP BORANG SEMAKAN & PERSONEL
+    // =====================================================================
     saveDatabaseFormData();
     updateOpenDriveButton();
+
+    if (item.borang_json && item.borang_json.trim() !== '') {
+        try {
+            const parsedData = JSON.parse(item.borang_json);
+            
+            // 1. Masukkan nilai ke elemen berdasarkan ID
+            Object.keys(parsedData).forEach(key => {
+                if (key === 'personnel' || key === 'jenisApp') return; // Skip khas untuk jenisApp & personnel
+                
+                const el = document.getElementById(key);
+                if (el) {
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        el.checked = parsedData[key];
+                    } else if (el.type !== 'file') {
+                        el.value = parsedData[key];
+                    }
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+
+            // 2. Set Radio Button jenisApp
+            if (parsedData.jenisApp) {
+                const radio = document.querySelector(`input[name="jenisApp"][value="${parsedData.jenisApp}"]`);
+                if (radio) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+
+            // 3. Set Senarai Personel
+            const personnelListEl = document.getElementById('personnelList');
+            if (personnelListEl) personnelListEl.innerHTML = ''; // Kosongkan dahulu
+            if (parsedData.personnel && Array.isArray(parsedData.personnel) && parsedData.personnel.length > 0) {
+                parsedData.personnel.forEach(person => {
+                    addPerson(person); 
+                });
+            } else {
+                addPerson(); // Tambah satu yang kosong jika tiada data
+            }
+
+            // 4. SELAMATKAN KE DALAM MEMORI (HINDARI OVERWRITE OLEH switchTab)
+            formStates['stb'] = parsedData;
+            storageWrapper.set({ 'stb_form_states': formStates });
+            
+            // Re-initialize butang tick supaya warna berubah ikut data
+            setTimeout(() => {
+                initializeTickButtons();
+            }, 100);
+
+            // 5. Buka tab Borang Semakan
+            switchTab('stb'); 
+            
+            // 6. Suspend sekejap dan paksa simpan state terakhir (overwrite timer `switchTab`)
+            setTimeout(() => {
+                saveFormData();
+                savePengesyorState();
+            }, 250);
+
+            return; // Berhenti di sini supaya tidak melompat ke tab 'db'
+        } catch (e) {
+            console.error("Gagal parse borang_json", e);
+        }
+    }
+    
+    // Jika tiada JSON, buka Input Database (lalai seperti sistem asal)
+    switchTab('db');
+    // =====================================================================
   }
 
   function loadRecordToPelulus(item) {
@@ -8691,6 +8845,44 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
       } else if (dbJenisValue === 'UBAH GRED') {
         ubahGredVal = dbPerubahanInputVal;
       }
+
+      // =====================================================================
+      // (KOD BARU KEMASKINI) LANGKAH A: TANGKAP SEMUA DATA BORANG & PERSONEL
+      // =====================================================================
+      const borangJsonData = {};
+      
+      document.querySelectorAll('#tab-checker input, #tab-checker select, #tab-checker textarea').forEach(el => {
+        if (el.id && !el.id.includes('print_') && !el.id.includes('pelulus_') && !el.id.includes('login')) {
+          if (el.type === 'checkbox' || el.type === 'radio') {
+            borangJsonData[el.id] = el.checked;
+          } else {
+            borangJsonData[el.id] = el.value;
+          }
+        }
+      });
+      
+      // Ambil nilai radio button jenis permohonan secara manual
+      const selectedRadio = document.querySelector('input[name="jenisApp"]:checked');
+      if (selectedRadio) {
+        borangJsonData['jenisApp'] = selectedRadio.value;
+      }
+      
+      // Ambil maklumat personel dinamik
+      const personnelListObj = [];
+      document.querySelectorAll('.person-card').forEach(card => {
+        const roles = [];
+        card.querySelectorAll('.role-cb:checked').forEach(cb => roles.push(cb.value));
+        personnelListObj.push({
+          name: card.querySelector('.p-name')?.value || '',
+          isCompany: card.querySelector('.is-company')?.checked || false,
+          roles: roles,
+          s_ic: card.querySelector('.status-ic')?.value || '',
+          s_sb: card.querySelector('.status-sb')?.value || '',
+          s_epf: card.querySelector('.status-epf')?.value || ''
+        });
+      });
+      borangJsonData['personnel'] = personnelListObj;
+      // =====================================================================
       
       const payload = {
         row: targetRow,
@@ -8716,7 +8908,8 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         hantar_emel_spi: confirmHantarEmel,
         ubah_maklumat: ubahMaklumatVal,
         ubah_gred: ubahGredVal,
-        email: currentUser ? currentUser.email : '' // <-- TAMBAH INI
+        email: currentUser ? currentUser.email : '',
+        borang_json: JSON.stringify(borangJsonData) // JSON yang telah merangkumi semua elemen
       };
       
       if (isConfirmed) {
@@ -8748,7 +8941,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
         }
         
         if (whatsappUrl) {
-            // --- GANTI KEPADA MODAL ANIMASI DI SINI ---
             const isWaConfirmed = await CustomAppModal.confirm(
                 message + "<br><br>Adakah anda ingin buka dan hantar notifikasi WhatsApp sekarang?",
                 "Hantar WhatsApp",
@@ -8760,7 +8952,6 @@ Sila semak sistem STB untuk tindakan selanjutnya.`;
                 window.open(whatsappUrl, '_blank');
             }
         } else {
-            // --- GANTI KEPADA MODAL ANIMASI DI SINI ---
             await CustomAppModal.alert(message, "Selesai", "success");
         }
         
